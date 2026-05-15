@@ -50,6 +50,10 @@ func main() {
 	shortVideoRepo := repository.NewShortVideoRepo(database.DB)
 	deviceRepo := repository.NewDeviceRepo(database.DB)
 	shareRepo := repository.NewShareRepo(database.DB)
+	siteRepo := repository.NewSiteRepo(database.DB)
+	p2pRepo := repository.NewP2PRepo(database.DB)
+	pushRepo := repository.NewPushRepo(database.DB)
+	redirectRepo := repository.NewRedirectRepo(database.DB)
 
 	// 6. 初始化采集器
 	probeTimeout, _ := time.ParseDuration(cfg.Collector.ProbeTimeout)
@@ -75,6 +79,11 @@ func main() {
 	deviceSvc := service.NewDeviceService(deviceRepo)
 	shareSvc := service.NewShareService(shareRepo, deviceRepo)
 	sitemapSvc := service.NewSitemapService(database.DB)
+	siteSvc := service.NewSiteService(siteRepo)
+	p2pSvc := service.NewP2PService(p2pRepo)
+	pushSvc := service.NewPushService(pushRepo)
+	redirectSvc := service.NewRedirectService(redirectRepo)
+	gscSvc := service.NewGSCService(siteRepo)
 
 	// 8. 初始化 Handler 层
 	healthHandler := handler.NewHealthHandler()
@@ -90,12 +99,25 @@ func main() {
 	deviceHandler := handler.NewDeviceHandler(deviceSvc)
 	shareHandler := handler.NewShareHandler(shareSvc)
 	sitemapHandler := handler.NewSitemapHandler(sitemapSvc)
+	siteHandler := handler.NewSiteHandler(siteSvc)
+	p2pHandler := handler.NewP2PHandler(p2pSvc)
+	pushHandler := handler.NewPushHandler(pushSvc)
+	redirectHandler := handler.NewRedirectHandler(redirectSvc)
 
-	// 9. 初始化路由
+	// 9. 初始化路由（传入 UA 分流所需的 301 匹配函数）
+	redirectFn := func(domain, path, ua string) (targetURL, ruleType string, ok bool) {
+		rule := redirectSvc.MatchRule(domain, path, ua)
+		if rule != nil {
+			return rule.TargetURL, rule.RuleType, true
+		}
+		return "", "", false
+	}
+
 	r := router.Setup(cfg, jwtMgr, healthHandler, videoHandler, userHandler,
 		commentHandler, danmakuHandler, rankHandler, collectHandler,
 		tagHandler, shortVideoHandler, recommendHandler, deviceHandler,
-		shareHandler, sitemapHandler)
+		shareHandler, sitemapHandler, siteHandler, p2pHandler,
+		pushHandler, redirectHandler, redirectFn)
 
 	// 10. 启动采集调度器
 	scheduler := collector.NewScheduler(collectRepo, worker)
@@ -106,7 +128,54 @@ func main() {
 		log.Println("[启动] 采集调度器已启动")
 	}
 
-	// 11. 启动 HTTP 服务
+	// 11. 启动定时任务
+
+	// 11a. P2P 信令清理（每 5 分钟）
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := p2pSvc.Cleanup(); err != nil {
+				log.Printf("[定时任务] P2P 清理失败: %v", err)
+			}
+		}
+	}()
+	log.Println("[启动] P2P 清理定时任务已启动（每5分钟）")
+
+	// 11b. 站群健康检查（每 10 分钟）
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		// 首次启动时延迟 30 秒执行
+		time.Sleep(30 * time.Second)
+		if err := siteSvc.HealthCheckAll(); err != nil {
+			log.Printf("[定时任务] 站群健康检查失败: %v", err)
+		}
+		for range ticker.C {
+			if err := siteSvc.HealthCheckAll(); err != nil {
+				log.Printf("[定时任务] 站群健康检查失败: %v", err)
+			}
+		}
+	}()
+	log.Println("[启动] 站群健康检查定时任务已启动（每10分钟）")
+
+	// 11c. Sitemap 自动提交（每 4 小时）
+	go func() {
+		ticker := time.NewTicker(4 * time.Hour)
+		defer ticker.Stop()
+		// 首次启动时延迟 2 分钟执行
+		time.Sleep(2 * time.Minute)
+		gscSvc.SubmitAllSitemaps()
+		for range ticker.C {
+			gscSvc.SubmitAllSitemaps()
+		}
+	}()
+	log.Println("[启动] Sitemap 自动提交定时任务已启动（每4小时）")
+
+	// 11d. Push 推送服务关闭处理
+	defer pushSvc.Close()
+
+	// 12. 启动 HTTP 服务
 	addr := ":" + cfg.App.Port
 	log.Printf("[启动] 服务监听 %s", addr)
 
@@ -116,7 +185,7 @@ func main() {
 		}
 	}()
 
-	// 12. 优雅关闭
+	// 13. 优雅关闭
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

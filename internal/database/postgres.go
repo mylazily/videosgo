@@ -82,5 +82,20 @@ func autoMigrate() error {
 		// 采集
 		&model.CollectSource{},
 		&model.CollectLog{},
+		// 站群管理
+		&model.SiteDomain{},
+		&model.SiteHealthLog{},
+		&model.DomainLinkAudit{},
+		// P2P 信令
+		&model.SignalChannel{},
+		&model.PeerRegistry{},
+		&model.TransferLog{},
+		// Push 推送
+		&model.PushSubscription{},
+		&model.PushNotification{},
+		&model.PushClickLog{},
+		// 301 重定向
+		&model.RedirectRule{},
+		&model.RedirectHitLog{},
 	)
 }

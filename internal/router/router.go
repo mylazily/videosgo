@@ -28,8 +28,18 @@ func Setup(
 	deviceH *handler.DeviceHandler,
 	shareH *handler.ShareHandler,
 	sitemapH *handler.SitemapHandler,
+	// 新增模块
+	siteH *handler.SiteHandler,
+	p2pH *handler.P2PHandler,
+	pushH *handler.PushHandler,
+	redirectH *handler.RedirectHandler,
+	// UA 分流中间件回调
+	redirectFn func(domain, path, ua, ip string) (targetURL string, found bool),
 ) *gin.Engine {
 	r := gin.New()
+
+	// UA/IP 智能分流中间件（注册在最前面）
+	r.Use(middleware.UASplit(redirectFn))
 
 	// 全局中间件
 	r.Use(middleware.Recovery())
@@ -115,6 +125,20 @@ func Setup(
 		// 认证
 		api.POST("/auth/register", userH.Register)
 		api.POST("/auth/login", userH.Login)
+
+		// P2P 信令（公开接口）
+		api.POST("/p2p/register", p2pH.RegisterPeer)
+		api.POST("/p2p/heartbeat", p2pH.Heartbeat)
+		api.DELETE("/p2p/unregister", p2pH.UnregisterPeer)
+		api.POST("/p2p/signal/offer", p2pH.OfferSignal)
+		api.POST("/p2p/signal/answer", p2pH.AnswerSignal)
+		api.POST("/p2p/signal/ice", p2pH.ExchangeICE)
+		api.GET("/p2p/peers/:videoId", p2pH.GetVideoPeers)
+
+		// Push 推送（公开接口）
+		api.POST("/push/subscribe", pushH.Subscribe)
+		api.DELETE("/push/subscribe", pushH.Unsubscribe)
+		api.GET("/push/stats", pushH.GetStats)
 	}
 
 	// ========== 需要认证的路由 ==========
@@ -158,6 +182,24 @@ func Setup(
 		admin.GET("/collect/sources/:id", collectH.GetSource)
 		admin.POST("/collect/sources/:id/trigger", collectH.TriggerCollect)
 		admin.GET("/collect/logs", collectH.ListLogs)
+
+		// 站群管理
+		admin.GET("/sites", siteH.ListSites)
+		admin.POST("/sites", siteH.CreateSite)
+		admin.PUT("/sites/:id", siteH.UpdateSite)
+		admin.DELETE("/sites/:id", siteH.DeleteSite)
+		admin.POST("/sites/:id/health-check", siteH.HealthCheck)
+		admin.GET("/sites/audit", siteH.GetLinkAudit)
+
+		// 301 重定向规则管理
+		admin.GET("/redirects", redirectH.ListRules)
+		admin.POST("/redirects", redirectH.CreateRule)
+		admin.PUT("/redirects/:id", redirectH.UpdateRule)
+		admin.DELETE("/redirects/:id", redirectH.DeleteRule)
+		admin.GET("/redirects/:id/logs", redirectH.GetHitLogs)
+
+		// 推送管理
+		admin.POST("/push/send", pushH.SendNotification)
 	}
 
 	// ========== SEO 路由 ==========
