@@ -54,6 +54,11 @@ func main() {
 	p2pRepo := repository.NewP2PRepo(database.DB)
 	pushRepo := repository.NewPushRepo(database.DB)
 	redirectRepo := repository.NewRedirectRepo(database.DB)
+	tgRepo := repository.NewTGRepo(database.DB)
+	xRepo := repository.NewXRepo(database.DB)
+	paymentRepo := repository.NewPaymentRepo(database.DB)
+	domainRotationRepo := repository.NewDomainRotationRepo(database.DB)
+	adRewardRepo := repository.NewAdRewardRepo(database.DB)
 
 	// 6. 初始化采集器
 	probeTimeout, _ := time.ParseDuration(cfg.Collector.ProbeTimeout)
@@ -84,6 +89,12 @@ func main() {
 	pushSvc := service.NewPushService(pushRepo)
 	redirectSvc := service.NewRedirectService(redirectRepo)
 	gscSvc := service.NewGSCService(siteRepo)
+	tgSvc := service.NewTGService(tgRepo)
+	xSvc := service.NewXService(xRepo)
+	paymentSvc := service.NewPaymentService(paymentRepo)
+	wsSvc := service.NewWSService()
+	domainRotationSvc := service.NewDomainRotationService(domainRotationRepo)
+	adRewardSvc := service.NewAdRewardService(adRewardRepo)
 
 	// 8. 初始化 Handler 层
 	healthHandler := handler.NewHealthHandler()
@@ -103,6 +114,12 @@ func main() {
 	p2pHandler := handler.NewP2PHandler(p2pSvc)
 	pushHandler := handler.NewPushHandler(pushSvc)
 	redirectHandler := handler.NewRedirectHandler(redirectSvc)
+	tgHandler := handler.NewTGHandler(tgSvc)
+	xHandler := handler.NewXHandler(xSvc)
+	paymentHandler := handler.NewPaymentHandler(paymentSvc)
+	wsHandler := handler.NewWSHandler(wsSvc)
+	domainHandler := handler.NewDomainHandler(domainRotationSvc)
+	adRewardHandler := handler.NewAdRewardHandler(adRewardSvc)
 
 	// 9. 初始化路由（传入 UA 分流所需的 301 匹配函数）
 	redirectFn := func(domain, path, ua string) (targetURL, ruleType string, ok bool) {
@@ -117,7 +134,9 @@ func main() {
 		commentHandler, danmakuHandler, rankHandler, collectHandler,
 		tagHandler, shortVideoHandler, recommendHandler, deviceHandler,
 		shareHandler, sitemapHandler, siteHandler, p2pHandler,
-		pushHandler, redirectHandler, redirectFn)
+		pushHandler, redirectHandler, tgHandler, xHandler,
+		paymentHandler, wsHandler, domainHandler, adRewardHandler,
+		redirectFn)
 
 	// 10. 启动采集调度器
 	scheduler := collector.NewScheduler(collectRepo, worker)
@@ -174,6 +193,11 @@ func main() {
 
 	// 11d. Push 推送服务关闭处理
 	defer pushSvc.Close()
+
+	// 11e. 域名轮询自动检查（每分钟）
+	domainRotationSvc.StartAutoRotation()
+	defer domainRotationSvc.StopAutoRotation()
+	log.Println("[启动] 域名轮询自动检查已启动（每分钟）")
 
 	// 12. 启动 HTTP 服务
 	addr := ":" + cfg.App.Port

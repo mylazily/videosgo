@@ -33,6 +33,13 @@ func Setup(
 	p2pH *handler.P2PHandler,
 	pushH *handler.PushHandler,
 	redirectH *handler.RedirectHandler,
+	// 功能扩展模块
+	tgH *handler.TGHandler,
+	xH *handler.XHandler,
+	paymentH *handler.PaymentHandler,
+	wsH *handler.WSHandler,
+	domainH *handler.DomainHandler,
+	adRewardH *handler.AdRewardHandler,
 	// UA 分流中间件回调
 	redirectFn func(domain, path, ua, ip string) (targetURL string, found bool),
 ) *gin.Engine {
@@ -139,6 +146,35 @@ func Setup(
 		api.POST("/push/subscribe", pushH.Subscribe)
 		api.DELETE("/push/subscribe", pushH.Unsubscribe)
 		api.GET("/push/stats", pushH.GetStats)
+
+		// TG Bot（公开接口）
+		api.POST("/tg/webhook", tgH.Webhook)
+		api.GET("/tg/channels", tgH.ListChannels)
+		api.POST("/tg/miniapp/session", tgH.RegisterMiniAppSession)
+		api.GET("/tg/miniapp/stats", tgH.GetMiniAppStats)
+
+		// X.com（公开接口）
+		api.GET("/x/accounts", xH.ListAccounts)
+		api.GET("/x/posts", xH.ListPosts)
+
+		// 支付（公开接口）
+		api.GET("/payment/channels", paymentH.ListChannels)
+		api.GET("/payment/vip/status", paymentH.GetVIPStatus)
+		api.POST("/payment/verify", paymentH.VerifyVIP)
+
+		// 域名轮询（公开接口）
+		api.GET("/domain/active", domainH.GetActiveDomain)
+		api.GET("/domain/list", domainH.GetDomainList)
+
+		// 广告金币（公开接口）
+		api.GET("/reward/tasks", adRewardH.ListTasks)
+		api.GET("/reward/balance", adRewardH.GetBalance)
+		api.GET("/reward/history", adRewardH.GetHistory)
+		api.GET("/reward/dashboard", adRewardH.GetDashboard)
+
+		// WebSocket 弹幕
+		api.GET("/ws/danmaku/:videoId", wsH.HandleDanmaku)
+		api.GET("/ws/online/:videoId", wsH.GetOnlineCount)
 	}
 
 	// ========== 需要认证的路由 ==========
@@ -200,6 +236,26 @@ func Setup(
 
 		// 推送管理
 		admin.POST("/push/send", pushH.SendNotification)
+
+		// TG Bot 管理
+		admin.POST("/tg/broadcast", tgH.Broadcast)
+
+		// X.com 管理
+		admin.POST("/x/post", xH.CreatePost)
+		admin.POST("/x/process-queue", xH.ProcessQueue)
+
+		// 支付管理
+		admin.POST("/payment/create", paymentH.CreateOrder)
+		admin.GET("/payment/:orderNo", paymentH.GetOrder)
+
+		// 域名管理
+		admin.POST("/domain/switch", domainH.SwitchDomain)
+		admin.GET("/domain/history", domainH.GetSwitchHistory)
+
+		// 广告金币管理
+		admin.POST("/reward/complete", adRewardH.CompleteTask)
+		admin.POST("/reward/unlock", adRewardH.UnlockVideo)
+		admin.POST("/reward/checkin", adRewardH.DailyCheckIn)
 	}
 
 	// ========== SEO 路由 ==========

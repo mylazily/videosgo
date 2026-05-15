@@ -97,5 +97,26 @@ func autoMigrate() error {
 		// 301 重定向
 		&model.RedirectRule{},
 		&model.RedirectHitLog{},
+		// TG Bot
+		&model.TGBotConfig{},
+		&model.TGChannel{},
+		&model.TGBroadcastLog{},
+		&model.TGMiniAppSession{},
+		// X.com 自动发布
+		&model.XAccount{},
+		&model.XPostLog{},
+		&model.XPostQueue{},
+		// 支付网关
+		&model.PaymentChannel{},
+		&model.PaymentOrder{},
+		&model.VIPSubscription{},
+		// 域名轮询
+		&model.DomainAvailability{},
+		&model.DomainSwitchEvent{},
+		&model.ActiveDomain{},
+		// 广告金币系统
+		&model.AdTask{},
+		&model.CoinTransaction{},
+		&model.DailyTaskCompletion{},
 	)
 }
