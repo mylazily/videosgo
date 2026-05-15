@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/service"
 	"github.com/mylazily/videosgo/pkg/response"
 )
@@ -20,20 +21,63 @@ func NewVideoHandler(svc *service.VideoService) *VideoHandler {
 
 // GetVideo 获取视频详情
 // GET /api/v1/videos/:id
+// 返回增强数据：play_lines、domain_pool、shared_path、source_count
 func (h *VideoHandler) GetVideo(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
 	if err != nil {
 		response.BadRequest(c, "无效的视频 ID")
 		return
 	}
 
-	video, err := h.svc.GetVideo(uint(id))
+	video, err := h.svc.GetVideo(id)
 	if err != nil {
 		response.NotFound(c, "视频不存在")
 		return
 	}
 
-	response.Success(c, video)
+	// 构建增强响应
+	result := gin.H{
+		"id":           video.ID,
+		"title":        video.Title,
+		"sub_title":    video.SubTitle,
+		"cover":        video.Cover,
+		"description":  video.Description,
+		"category_id":  video.CategoryID,
+		"category":     video.Category,
+		"year":         video.Year,
+		"area":         video.Area,
+		"director":     video.Director,
+		"actors":       video.Actors,
+		"tags":         video.Tags,
+		"remarks":      video.Remarks,
+		"play_links":   video.PlayLinks,
+		"status":       video.Status,
+		"source_id":    video.SourceID,
+		"view_count":   video.ViewCount,
+		"like_count":   video.LikeCount,
+		"score":        video.Score,
+		"created_at":   video.CreatedAt,
+		"updated_at":   video.UpdatedAt,
+		"episodes":     video.Episodes,
+		// 增强字段
+		"clean_title":  video.CleanTitle,
+		"play_lines":   video.PlayLines,
+		"domain_pool":  video.DomainPool,
+		"shared_path":  video.SharedPath,
+		"source_count": video.SourceCount,
+	}
+
+	// 如果有域名池和共享路径，额外返回备用 URL 列表
+	if video.SharedPath != "" && len(video.DomainPool) > 0 {
+		alternateURLs := make([]string, 0, len(video.DomainPool))
+		for _, domain := range video.DomainPool {
+			alternateURLs = append(alternateURLs, "https://"+domain+video.SharedPath)
+		}
+		result["alternate_urls"] = alternateURLs
+	}
+
+	response.Success(c, result)
 }
 
 // ListVideos 获取视频列表

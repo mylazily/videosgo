@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -24,23 +25,27 @@ type CollectResult struct {
 
 // Worker 采集 Worker 池
 type Worker struct {
-	client   *MacCMSClient
-	parser   *Parser
-	probe    *Probe
-	db       *gorm.DB
-	workers  int
-	retryMax int
+	client        *MacCMSClient
+	parser        *Parser
+	probe         *Probe
+	db            *gorm.DB
+	workers       int
+	retryMax      int
+	titleCleaner  *TitleCleaner  // 标题清洗器
+	domainExtractor *DomainPoolExtractor // 域名池提取器
 }
 
 // NewWorker 创建 Worker 池
 func NewWorker(client *MacCMSClient, parser *Parser, probe *Probe, db *gorm.DB, workers, retryMax int) *Worker {
 	return &Worker{
-		client:   client,
-		parser:   parser,
-		probe:    probe,
-		db:       db,
-		workers:  workers,
-		retryMax: retryMax,
+		client:          client,
+		parser:          parser,
+		probe:           probe,
+		db:              db,
+		workers:         workers,
+		retryMax:        retryMax,
+		titleCleaner:    NewTitleCleaner(),
+		domainExtractor: NewDomainPoolExtractor(),
 	}
 }
 
@@ -111,17 +116,13 @@ func (w *Worker) processItem(item MacCMSVideoItem, source *model.CollectSource, 
 }
 
 // doProcessItem 实际处理单个视频条目
+// 增强逻辑：使用标题清洗 + 模糊匹配去重，实现一剧多线聚合
 func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource) error {
-	// 归一化标题
+	// 归一化标题（保留原始标题用于展示）
 	normalTitle := normalizeTitle(item.VodName)
 
-	// 检查是否已存在
-	var existing model.Video
-	err := w.db.Where("title = ?", normalTitle).First(&existing).Error
-	isNew := err == gorm.ErrRecordNotFound
-	if err != nil && !isNew {
-		return fmt.Errorf("查询数据库失败: %w", err)
-	}
+	// 使用标题清洗器获取纯净标题（用于去重匹配）
+	cleanTitle := w.titleCleaner.Clean(item.VodName)
 
 	// 解析播放链接
 	playLinks := w.parser.ParsePlayGroups(item.VodPlayFrom, item.VodPlayUrl)
@@ -134,14 +135,37 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 		playLinks = w.probe.FilterAliveLinks(playLinks)
 	}
 
-	// 将播放链接转为 JSONB 数组格式
+	// 将播放链接转为 JSONB 数组格式（兼容旧字段）
 	playLinksJSON := w.parser.ToJSONBArray(playLinks)
+
+	// 构建聚合播放线路（PlayLineJSON）
+	playLines := w.buildPlayLines(playLinks, source.Name)
 
 	// 解析标签
 	tags := parseTags(item.VodTags)
 
+	// ====== 增强去重逻辑 ======
+	// 步骤 1: 精确匹配 clean_title
+	var existing model.Video
+	err := w.db.Where("clean_title = ? AND clean_title != ''", cleanTitle).First(&existing).Error
+	isNew := err == gorm.ErrRecordNotFound
+	if err != nil && !isNew {
+		return fmt.Errorf("查询数据库失败: %w", err)
+	}
+
+	// 步骤 2: 如果精确匹配未命中，尝试模糊匹配
 	if isNew {
-		// 新增视频
+		matched := w.findSimilarVideo(cleanTitle)
+		if matched != nil {
+			existing = *matched
+			isNew = false
+			log.Printf("[采集] 模糊匹配命中: \"%s\" -> 已有视频 ID=%s (相似度>0.7)",
+				item.VodName, existing.ID)
+		}
+	}
+
+	if isNew {
+		// ====== 新增视频 ======
 		video := &model.Video{
 			Title:       normalTitle,
 			SubTitle:    item.VodSub,
@@ -158,6 +182,17 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 			PlayLinks:   playLinksJSON,
 			Status:      "active",
 			SourceID:    source.ID,
+			// 新增字段
+			CleanTitle:  cleanTitle,
+			PlayLines:   playLines,
+			SourceCount: 1,
+		}
+
+		// 尝试提取域名池（单源时也提取，为后续聚合做准备）
+		domainPool, sharedPath := w.domainExtractor.ExtractDomainsFromPlayGroups(playLinks)
+		if len(domainPool) > 1 && sharedPath != "" {
+			video.DomainPool = domainPool
+			video.SharedPath = sharedPath
 		}
 
 		if err := w.db.Create(video).Error; err != nil {
@@ -170,10 +205,12 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 		// 记录到 Redis 热搜
 		recordSearchHot(normalTitle)
 
+		log.Printf("[采集] 新增视频: %s (clean: %s)", normalTitle, cleanTitle)
 		return nil
 	}
 
-	// 更新已有视频
+	// ====== 更新已有视频（一剧多线聚合） ======
+	// 更新基础信息
 	updates := map[string]interface{}{
 		"cover":       item.VodPic,
 		"description": stripHTML(item.VodContent),
@@ -188,11 +225,213 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 		"source_id":   source.ID,
 	}
 
+	// 如果已有视频没有 clean_title，补充设置
+	if existing.CleanTitle == "" {
+		updates["clean_title"] = cleanTitle
+	}
+
 	if err := w.db.Model(&existing).Updates(updates).Error; err != nil {
 		return fmt.Errorf("更新视频失败: %w", err)
 	}
 
+	// 追加新的播放线路（去重）
+	if err := w.appendPlayLines(existing.ID, playLines); err != nil {
+		log.Printf("[采集] 追加播放线路失败 (视频ID=%s): %v", existing.ID, err)
+	}
+
+	// 增加资源站计数
+	w.db.Model(&model.Video{}).Where("id = ?", existing.ID).
+		UpdateColumn("source_count", gorm.Expr("source_count + 1"))
+
+	// 尝试更新域名池
+	w.tryUpdateDomainPool(existing.ID, playLinks)
+
+	log.Printf("[采集] 聚合更新: %s -> 已有视频 ID=%s (来源: %s)",
+		item.VodName, existing.ID, source.Name)
+
 	return nil
+}
+
+// findSimilarVideo 在数据库中查找与给定 cleanTitle 相似的视频
+// 使用前缀匹配缩小候选范围，再在应用层计算相似度
+func (w *Worker) findSimilarVideo(cleanTitle string) *model.Video {
+	if cleanTitle == "" || len(cleanTitle) < 2 {
+		return nil
+	}
+
+	// 取前缀的前 4 个字符作为候选范围（中文字符约 2 个字）
+	prefixLen := 4
+	if len(cleanTitle) < prefixLen {
+		prefixLen = len(cleanTitle)
+	}
+	prefix := cleanTitle[:prefixLen]
+
+	// 查询候选视频
+	var candidates []model.Video
+	err := w.db.Where("clean_title LIKE ? AND clean_title != '' AND status = ?",
+		prefix+"%", "active").
+		Limit(50).
+		Find(&candidates).Error
+	if err != nil {
+		return nil
+	}
+
+	// 在候选中查找相似度最高的视频
+	var bestMatch *model.Video
+	bestSimilarity := 0.7 // 阈值
+
+	for i := range candidates {
+		sim := w.titleCleaner.Similarity(cleanTitle, candidates[i].CleanTitle)
+		if sim > bestSimilarity {
+			bestSimilarity = sim
+			bestMatch = &candidates[i]
+		}
+	}
+
+	return bestMatch
+}
+
+// buildPlayLines 从播放组构建聚合播放线路
+func (w *Worker) buildPlayLines(playLinks []PlayGroup, sourceName string) model.PlayLinesJSON {
+	lines := make(model.PlayLinesJSON, 0)
+
+	for _, group := range playLinks {
+		for _, linkURL := range group.Links {
+			// 处理 "第1集$url" 格式，提取实际 URL
+			actualURL := linkURL
+			if idx := strings.Index(linkURL, "$"); idx >= 0 {
+				actualURL = linkURL[idx+1:]
+			}
+
+			// 提取域名和路径
+			domain, path := w.domainExtractor.ExtractFromM3U8(actualURL)
+
+			// 检测画质
+			quality := detectQuality(linkURL)
+
+			// 检测语言
+			language := detectLanguage(linkURL)
+
+			line := model.PlayLineJSON{
+				SourceName: group.GroupName,
+				M3U8URL:    actualURL,
+				Domain:     domain,
+				Path:       path,
+				Format:     "m3u8",
+				Quality:    quality,
+				Language:   language,
+			}
+			lines = append(lines, line)
+		}
+	}
+
+	return lines
+}
+
+// appendPlayLines 向已有视频追加播放线路（去重）
+func (w *Worker) appendPlayLines(videoID uuid.UUID, newLines model.PlayLinesJSON) error {
+	if len(newLines) == 0 {
+		return nil
+	}
+
+	// 获取当前播放线路
+	var video model.Video
+	if err := w.db.Select("id, play_lines").First(&video, "id = ?", videoID).Error; err != nil {
+		return err
+	}
+
+	// 构建已有 URL 集合用于去重
+	existingURLs := make(map[string]bool)
+	for _, line := range video.PlayLines {
+		existingURLs[line.M3U8URL] = true
+	}
+
+	// 追加不重复的线路
+	appended := false
+	for _, line := range newLines {
+		if !existingURLs[line.M3U8URL] {
+			video.PlayLines = append(video.PlayLines, line)
+			existingURLs[line.M3U8URL] = true
+			appended = true
+		}
+	}
+
+	if appended {
+		return w.db.Model(&model.Video{}).Where("id = ?", videoID).
+			Update("play_lines", video.PlayLines).Error
+	}
+
+	return nil
+}
+
+// tryUpdateDomainPool 尝试更新域名池
+// 当视频的所有播放线路共享同一路径时，提取域名池
+func (w *Worker) tryUpdateDomainPool(videoID uuid.UUID, playLinks []PlayGroup) {
+	// 获取当前视频的播放线路
+	var video model.Video
+	if err := w.db.Select("id, play_lines, domain_pool, shared_path").First(&video, "id = ?", videoID).Error; err != nil {
+		return
+	}
+
+	// 构建所有播放链接
+	var allLinks []PlayLink
+	for _, line := range video.PlayLines {
+		allLinks = append(allLinks, PlayLink{
+			SourceName: line.SourceName,
+			M3U8URL:    line.M3U8URL,
+		})
+	}
+
+	// 提取域名池
+	domainPool, sharedPath := w.domainExtractor.ExtractFromPlayLinks(allLinks)
+	if len(domainPool) > 1 && sharedPath != "" {
+		// 有多个域名且共享路径，更新域名池
+		poolJSON, err := json.Marshal(domainPool)
+		if err != nil {
+			return
+		}
+		w.db.Model(&model.Video{}).Where("id = ?", videoID).
+			Updates(map[string]interface{}{
+				"domain_pool": string(poolJSON),
+				"shared_path": sharedPath,
+			})
+	}
+}
+
+// detectQuality 从链接文本中检测画质信息
+func detectQuality(linkText string) string {
+	text := strings.ToLower(linkText)
+	switch {
+	case strings.Contains(text, "4k") || strings.Contains(text, "2160"):
+		return "4K"
+	case strings.Contains(text, "1080"):
+		return "1080P"
+	case strings.Contains(text, "720"):
+		return "720P"
+	case strings.Contains(text, "480"):
+		return "480P"
+	default:
+		return ""
+	}
+}
+
+// detectLanguage 从链接文本中检测语言信息
+func detectLanguage(linkText string) string {
+	text := strings.ToLower(linkText)
+	switch {
+	case strings.Contains(text, "国语") || strings.Contains(text, "中字"):
+		return "国语"
+	case strings.Contains(text, "粤语"):
+		return "粤语"
+	case strings.Contains(text, "英语") || strings.Contains(text, "英文"):
+		return "英语"
+	case strings.Contains(text, "日语") || strings.Contains(text, "日文"):
+		return "日语"
+	case strings.Contains(text, "韩语") || strings.Contains(text, "韩文"):
+		return "韩语"
+	default:
+		return ""
+	}
 }
 
 // createEpisodes 创建剧集

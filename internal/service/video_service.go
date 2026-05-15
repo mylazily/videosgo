@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/database"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
@@ -22,8 +23,10 @@ func NewVideoService(repo *repository.VideoRepo) *VideoService {
 }
 
 // GetVideo 获取视频详情（带 Redis 缓存）
-func (s *VideoService) GetVideo(id uint) (*model.Video, error) {
-	cacheKey := fmt.Sprintf("video:detail:%d", id)
+// 返回时确保 play_lines、domain_pool、shared_path 都在响应中
+// 如果 shared_path 不为空，前端可利用 domain_pool 做无感切换
+func (s *VideoService) GetVideo(id uuid.UUID) (*model.Video, error) {
+	cacheKey := fmt.Sprintf("video:detail:%s", id.String())
 
 	// 尝试从缓存获取
 	if database.RDB != nil {
@@ -42,6 +45,11 @@ func (s *VideoService) GetVideo(id uint) (*model.Video, error) {
 		return nil, err
 	}
 
+	// 确保 PlayLines 不为 nil（兼容旧数据）
+	if video.PlayLines == nil {
+		video.PlayLines = model.PlayLinesJSON{}
+	}
+
 	// 写入缓存（10 分钟）
 	if database.RDB != nil {
 		data, _ := json.Marshal(video)
@@ -49,6 +57,28 @@ func (s *VideoService) GetVideo(id uint) (*model.Video, error) {
 	}
 
 	return video, nil
+}
+
+// GetVideoWithDomainPool 获取视频详情（含域名池备用 URL 列表）
+// 如果视频有 shared_path 和 domain_pool，额外返回可切换的备用 URL 列表
+func (s *VideoService) GetVideoWithDomainPool(id uuid.UUID) (*model.Video, []string, error) {
+	video, err := s.GetVideo(id)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 如果没有共享路径或域名池，直接返回
+	if video.SharedPath == "" || len(video.DomainPool) == 0 {
+		return video, nil, nil
+	}
+
+	// 构建备用 URL 列表
+	alternateURLs := make([]string, 0, len(video.DomainPool))
+	for _, domain := range video.DomainPool {
+		alternateURLs = append(alternateURLs, "https://"+domain+video.SharedPath)
+	}
+
+	return video, alternateURLs, nil
 }
 
 // ListVideos 获取视频列表（带 Redis 缓存）
@@ -191,13 +221,13 @@ func (s *VideoService) GetSearchHot(limit int) ([]model.SearchHot, error) {
 }
 
 // ClearVideoCache 清除视频缓存
-func (s *VideoService) ClearVideoCache(videoID uint) {
+func (s *VideoService) ClearVideoCache(videoID uuid.UUID) {
 	if database.RDB == nil {
 		return
 	}
 	ctx := context.Background()
 	// 清除详情缓存
-	database.RDB.Del(ctx, fmt.Sprintf("video:detail:%d", videoID))
+	database.RDB.Del(ctx, fmt.Sprintf("video:detail:%s", videoID.String()))
 	// 清除列表缓存（使用模糊匹配）
 	iter := database.RDB.Scan(ctx, 0, "video:list:*", 100).Iterator()
 	for iter.Next(ctx) {

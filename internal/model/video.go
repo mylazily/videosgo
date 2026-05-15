@@ -59,29 +59,109 @@ func (s *StringArray) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// PlayLineJSON 单条播放线路
+type PlayLineJSON struct {
+	SourceName string `json:"source_name"`          // 来源名称（如"最大资源"）
+	M3U8URL    string `json:"m3u8_url"`             // m3u8 播放地址
+	Domain     string `json:"domain,omitempty"`     // CDN 域名
+	Path       string `json:"path,omitempty"`       // 资源路径
+	Format     string `json:"format,omitempty"`     // 格式（m3u8/mp4）
+	Quality    string `json:"quality,omitempty"`    // 画质 1080P/720P/480P
+	Language   string `json:"language,omitempty"`   // 语言 国语/粤语/英语
+}
+
+// PlayLinesJSON 播放线路数组
+type PlayLinesJSON []PlayLineJSON
+
+// Scan 实现 sql.Scanner 接口（兼容 PostgreSQL JSONB）
+func (p *PlayLinesJSON) Scan(value interface{}) error {
+	if value == nil {
+		*p = PlayLinesJSON{}
+		return nil
+	}
+
+	var data []byte
+	switch v := value.(type) {
+	case string:
+		data = []byte(v)
+	case []byte:
+		data = v
+	default:
+		return fmt.Errorf("无法扫描 PlayLinesJSON: %v", value)
+	}
+
+	return json.Unmarshal(data, p)
+}
+
+// Value 实现 driver.Valuer 接口
+func (p PlayLinesJSON) Value() (driver.Value, error) {
+	if p == nil {
+		return "[]", nil
+	}
+	data, err := json.Marshal(p)
+	if err != nil {
+		return nil, err
+	}
+	return string(data), nil
+}
+
+// MarshalJSON 实现 json.Marshaler 接口
+func (p PlayLinesJSON) MarshalJSON() ([]byte, error) {
+	if p == nil {
+		return []byte("[]"), nil
+	}
+	return json.Marshal([]PlayLineJSON(p))
+}
+
+// UnmarshalJSON 实现 json.Unmarshaler 接口
+func (p *PlayLinesJSON) UnmarshalJSON(data []byte) error {
+	var arr []PlayLineJSON
+	if err := json.Unmarshal(data, &arr); err != nil {
+		return err
+	}
+	*p = arr
+	return nil
+}
+
 // Video 视频模型
 type Video struct {
-	ID          uuid.UUID   `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	Title       string      `gorm:"type:varchar(200);not null;index;comment:标题" json:"title"`
-	SubTitle    string      `gorm:"type:varchar(200);comment:副标题" json:"sub_title"`
-	Cover       string      `gorm:"type:varchar(500);comment:封面图" json:"cover"`
-	Description string      `gorm:"type:text;comment:简介" json:"description"`
-	CategoryID  int         `gorm:"index;default:0;comment:分类 ID" json:"category_id"`
-	Category    string      `gorm:"type:varchar(50);index;comment:分类名称" json:"category"`
-	Year        string      `gorm:"type:varchar(10);comment:年份" json:"year"`
-	Area        string      `gorm:"type:varchar(50);comment:地区" json:"area"`
-	Director    string      `gorm:"type:varchar(200);comment:导演" json:"director"`
-	Actors      string      `gorm:"type:text;comment:演员" json:"actors"`
-	Tags        StringArray `gorm:"type:jsonb;comment:标签" json:"tags"`
-	Remarks     string      `gorm:"type:varchar(100);comment:备注" json:"remarks"`
-	PlayLinks   StringArray `gorm:"type:jsonb;comment:播放链接 JSONB" json:"play_links"`
-	Status      string      `gorm:"type:varchar(20);default:active;comment:状态" json:"status"`
-	SourceID    uuid.UUID   `gorm:"type:uuid;index;comment:来源采集源 ID" json:"source_id"`
-	ViewCount   int64       `gorm:"default:0;comment:播放量" json:"view_count"`
-	LikeCount   int64       `gorm:"default:0;comment:点赞数" json:"like_count"`
-	Score       float64     `gorm:"default:0;comment:评分" json:"score"`
-	CreatedAt   time.Time   `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time   `gorm:"autoUpdateTime" json:"updated_at"`
+	ID          uuid.UUID    `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	Title       string       `gorm:"type:varchar(200);not null;index;comment:标题" json:"title"`
+	SubTitle    string       `gorm:"type:varchar(200);comment:副标题" json:"sub_title"`
+	Cover       string       `gorm:"type:varchar(500);comment:封面图" json:"cover"`
+	Description string       `gorm:"type:text;comment:简介" json:"description"`
+	CategoryID  int          `gorm:"index;default:0;comment:分类 ID" json:"category_id"`
+	Category    string       `gorm:"type:varchar(50);index;comment:分类名称" json:"category"`
+	Year        string       `gorm:"type:varchar(10);comment:年份" json:"year"`
+	Area        string       `gorm:"type:varchar(50);comment:地区" json:"area"`
+	Director    string       `gorm:"type:varchar(200);comment:导演" json:"director"`
+	Actors      string       `gorm:"type:text;comment:演员" json:"actors"`
+	Tags        StringArray  `gorm:"type:jsonb;comment:标签" json:"tags"`
+	Remarks     string       `gorm:"type:varchar(100);comment:备注" json:"remarks"`
+	PlayLinks   StringArray  `gorm:"type:jsonb;comment:播放链接 JSONB" json:"play_links"`
+	Status      string       `gorm:"type:varchar(20);default:active;comment:状态" json:"status"`
+	SourceID    uuid.UUID    `gorm:"type:uuid;index;comment:来源采集源 ID" json:"source_id"`
+	ViewCount   int64        `gorm:"default:0;comment:播放量" json:"view_count"`
+	LikeCount   int64        `gorm:"default:0;comment:点赞数" json:"like_count"`
+	Score       float64      `gorm:"default:0;comment:评分" json:"score"`
+	CreatedAt   time.Time    `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time    `gorm:"autoUpdateTime" json:"updated_at"`
+
+	// 标题清洗与去重
+	CleanTitle string `gorm:"type:varchar(255);index;comment:清洗后的纯净标题（用于去重匹配）" json:"clean_title"`
+
+	// 聚合播放线路 JSONB
+	// 格式: [{"source_name":"最大资源","m3u8_url":"xxx","domain":"cdn1.com","path":"/2024/movie.m3u8"}]
+	PlayLines PlayLinesJSON `gorm:"type:jsonb;default:'[]';comment:聚合播放线路" json:"play_lines"`
+
+	// 域名备用池（仅当多个线路共享同一路径时）
+	DomainPool StringArray `gorm:"type:text[];comment:域名备用池" json:"domain_pool,omitempty"`
+
+	// 共享路径（仅当多个线路共享同一路径时）
+	SharedPath string `gorm:"type:varchar(500);comment:共享路径" json:"shared_path,omitempty"`
+
+	// 关联资源站数量
+	SourceCount int `gorm:"default:0;comment:关联资源站数量" json:"source_count"`
 
 	// 关联
 	Episodes []Episode `gorm:"foreignKey:VideoID" json:"episodes,omitempty"`

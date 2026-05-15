@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
@@ -216,4 +218,128 @@ func (r *VideoRepo) GetSearchHot(limit int) ([]model.SearchHot, error) {
 	var hots []model.SearchHot
 	err := r.db.Order("count DESC").Limit(limit).Find(&hots).Error
 	return hots, err
+}
+
+// ==================== 标题清洗去重相关方法 ====================
+
+// FindByCleanTitle 根据清洗标题查找视频（精确匹配）
+func (r *VideoRepo) FindByCleanTitle(cleanTitle string) (*model.Video, error) {
+	var video model.Video
+	err := r.db.Where("clean_title = ?", cleanTitle).First(&video).Error
+	if err != nil {
+		return nil, err
+	}
+	return &video, nil
+}
+
+// FindSimilarVideos 根据清洗标题查找相似视频（模糊匹配）
+// 返回 clean_title 不为空且与给定标题可能相似的视频列表
+// 注意：精确的相似度计算需要在应用层进行（因为数据库无法直接计算编辑距离）
+func (r *VideoRepo) FindSimilarVideos(cleanTitle string, threshold float64) ([]model.Video, error) {
+	if cleanTitle == "" {
+		return nil, nil
+	}
+
+	// 策略：从数据库中获取 clean_title 不为空的活跃视频，
+	// 然后在应用层做相似度过滤
+	// 为了性能，限制候选集大小
+	var videos []model.Video
+	err := r.db.Where("clean_title != '' AND status = ?", "active").
+		Limit(500).
+		Find(&videos).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return videos, nil
+}
+
+// FindByCleanTitlePrefix 根据清洗标题前缀查找候选视频
+// 用于缩小模糊匹配的候选范围，提升性能
+func (r *VideoRepo) FindByCleanTitlePrefix(prefix string) ([]model.Video, error) {
+	if prefix == "" {
+		return nil, nil
+	}
+
+	var videos []model.Video
+	err := r.db.Where("clean_title LIKE ? AND clean_title != '' AND status = ?",
+		prefix+"%", "active").
+		Limit(100).
+		Find(&videos).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return videos, nil
+}
+
+// AppendPlayLine 向视频追加一条播放线路
+// 使用 PostgreSQL jsonb_array_append 或在应用层合并后更新
+func (r *VideoRepo) AppendPlayLine(videoID uuid.UUID, line model.PlayLineJSON) error {
+	// 获取当前视频
+	var video model.Video
+	if err := r.db.Select("id, play_lines").First(&video, "id = ?", videoID).Error; err != nil {
+		return err
+	}
+
+	// 追加新线路
+	video.PlayLines = append(video.PlayLines, line)
+
+	// 更新回数据库
+	return r.db.Model(&model.Video{}).Where("id = ?", videoID).
+		Update("play_lines", video.PlayLines).Error
+}
+
+// AppendPlayLines 批量向视频追加播放线路（去重）
+func (r *VideoRepo) AppendPlayLines(videoID uuid.UUID, newLines []model.PlayLineJSON) error {
+	// 获取当前视频
+	var video model.Video
+	if err := r.db.Select("id, play_lines").First(&video, "id = ?", videoID).Error; err != nil {
+		return err
+	}
+
+	// 构建已有线路的 URL 集合，用于去重
+	existingURLs := make(map[string]bool)
+	for _, line := range video.PlayLines {
+		existingURLs[line.M3U8URL] = true
+	}
+
+	// 追加不重复的新线路
+	for _, line := range newLines {
+		if !existingURLs[line.M3U8URL] {
+			video.PlayLines = append(video.PlayLines, line)
+			existingURLs[line.M3U8URL] = true
+		}
+	}
+
+	// 更新回数据库
+	return r.db.Model(&model.Video{}).Where("id = ?", videoID).
+		Update("play_lines", video.PlayLines).Error
+}
+
+// UpdateDomainPool 更新域名池
+func (r *VideoRepo) UpdateDomainPool(videoID uuid.UUID, domainPool []string, sharedPath string) error {
+	// 将域名池序列化为 JSON
+	poolJSON, err := json.Marshal(domainPool)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Model(&model.Video{}).Where("id = ?", videoID).
+		Updates(map[string]interface{}{
+			"domain_pool": string(poolJSON),
+			"shared_path": sharedPath,
+		}).Error
+}
+
+// IncrementSourceCount 增加资源站计数
+func (r *VideoRepo) IncrementSourceCount(videoID uuid.UUID) error {
+	return r.db.Model(&model.Video{}).Where("id = ?", videoID).
+		UpdateColumn("source_count", gorm.Expr("source_count + 1")).Error
+}
+
+// UpdateCleanTitle 更新清洗后的标题
+func (r *VideoRepo) UpdateCleanTitle(videoID uuid.UUID, cleanTitle string) error {
+	return r.db.Model(&model.Video{}).Where("id = ?", videoID).
+		Update("clean_title", cleanTitle).Error
 }
