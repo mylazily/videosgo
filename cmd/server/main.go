@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -96,9 +97,20 @@ func main() {
 	domainRotationSvc := service.NewDomainRotationService(domainRotationRepo)
 	adRewardSvc := service.NewAdRewardService(adRewardRepo)
 
-	// 8. 初始化 Handler 层
+	// 8. 初始化资源站监控服务（在 Handler 之前，因为 VideoHandler 需要注入）
+	stationMonitor := service.NewStationMonitor(database.RDB)
+	// 从数据库加载所有启用的采集源，添加到监控列表
+	if enabledSources, err := collectRepo.GetEnabled(); err == nil {
+		for _, src := range enabledSources {
+			stationMonitor.AddStation(src.Name, src.APIURL, "")
+		}
+		log.Printf("[启动] 资源站监控已加载 %d 个采集源", len(enabledSources))
+	}
+
+	// 9. 初始化 Handler 层
 	healthHandler := handler.NewHealthHandler()
 	videoHandler := handler.NewVideoHandler(videoSvc)
+	videoHandler.SetStationMonitor(stationMonitor) // 注入资源站监控
 	userHandler := handler.NewUserHandler(userSvc)
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	danmakuHandler := handler.NewDanmakuHandler(danmakuSvc)
@@ -120,8 +132,9 @@ func main() {
 	wsHandler := handler.NewWSHandler(wsSvc)
 	domainHandler := handler.NewDomainHandler(domainRotationSvc)
 	adRewardHandler := handler.NewAdRewardHandler(adRewardSvc)
+	stationHandler := handler.NewStationHandler(stationMonitor)
 
-	// 9. 初始化路由（传入 UA 分流所需的 301 匹配函数）
+	// 10. 初始化路由（传入 UA 分流所需的 301 匹配函数）
 	redirectFn := func(domain, path, ua string) (targetURL, ruleType string, ok bool) {
 		rule := redirectSvc.MatchRule(domain, path, ua)
 		if rule != nil {
@@ -136,6 +149,7 @@ func main() {
 		shareHandler, sitemapHandler, siteHandler, p2pHandler,
 		pushHandler, redirectHandler, tgHandler, xHandler,
 		paymentHandler, wsHandler, domainHandler, adRewardHandler,
+		stationHandler,
 		redirectFn)
 
 	// 10. 启动采集调度器
@@ -146,6 +160,11 @@ func main() {
 		defer scheduler.Stop()
 		log.Println("[启动] 采集调度器已启动")
 	}
+
+	// 10a. 启动资源站监控（1 分钟间隔）
+	stationMonitor.Start(context.Background())
+	defer stationMonitor.Stop()
+	log.Println("[启动] 资源站监控已启动（每1分钟检查）")
 
 	// 11. 启动定时任务
 

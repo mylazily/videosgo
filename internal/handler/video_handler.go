@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -11,12 +12,18 @@ import (
 
 // VideoHandler 视频处理器
 type VideoHandler struct {
-	svc *service.VideoService
+	svc     *service.VideoService
+	monitor *service.StationMonitor // 资源站监控（可以为 nil）
 }
 
 // NewVideoHandler 创建视频处理器
 func NewVideoHandler(svc *service.VideoService) *VideoHandler {
 	return &VideoHandler{svc: svc}
+}
+
+// SetStationMonitor 设置资源站监控（可选注入）
+func (h *VideoHandler) SetStationMonitor(monitor *service.StationMonitor) {
+	h.monitor = monitor
 }
 
 // GetVideo 获取视频详情
@@ -62,7 +69,7 @@ func (h *VideoHandler) GetVideo(c *gin.Context) {
 		"episodes":     video.Episodes,
 		// 增强字段
 		"clean_title":  video.CleanTitle,
-		"play_lines":   video.PlayLines,
+		"play_lines":   h.enrichPlayLines(video.PlayLines),
 		"domain_pool":  video.DomainPool,
 		"shared_path":  video.SharedPath,
 		"source_count": video.SourceCount,
@@ -277,4 +284,86 @@ func (h *VideoHandler) GetSearchHot(c *gin.Context) {
 	}
 
 	response.Success(c, hots)
+}
+
+// enrichPlayLines 为播放线路附加资源站状态信息
+// 如果监控服务未注入或无状态数据，则原样返回
+func (h *VideoHandler) enrichPlayLines(playLines interface{}) interface{} {
+	if h.monitor == nil || playLines == nil {
+		return playLines
+	}
+
+	// 获取资源站状态映射（一次性获取，避免循环内重复查询）
+	statusMap := h.monitor.GetStationStatusCompactMap()
+	if len(statusMap) == 0 {
+		return playLines
+	}
+
+	// 将 playLines 转为可遍历的结构
+	// playLines 的实际类型是 model.PlayLinesJSON ([]model.PlayLineJSON)
+	lines, ok := playLines.([]interface{})
+	if !ok {
+		// 尝试通过 JSON 序列化/反序列化处理
+		return h.enrichPlayLinesViaJSON(playLines, statusMap)
+	}
+
+	// 为每条线路附加 station_status
+	enriched := make([]interface{}, 0, len(lines))
+	for _, line := range lines {
+		if lineMap, ok := line.(map[string]interface{}); ok {
+			// 复制原始数据
+			enrichedLine := make(map[string]interface{})
+			for k, v := range lineMap {
+				enrichedLine[k] = v
+			}
+
+			// 查找对应的资源站状态
+			if sourceName, ok := lineMap["source_name"].(string); ok {
+				if status, found := statusMap[sourceName]; found {
+					enrichedLine["station_status"] = gin.H{
+						"is_alive":   status.IsAlive,
+						"latency_ms": status.Latency,
+						"speed_kbps": status.Speed,
+						"weight":     status.Weight,
+					}
+				}
+			}
+
+			enriched = append(enriched, enrichedLine)
+		} else {
+			enriched = append(enriched, line)
+		}
+	}
+
+	return enriched
+}
+
+// enrichPlayLinesViaJSON 通过 JSON 序列化/反序列化为播放线路附加状态
+// 用于处理 model.PlayLinesJSON 等自定义类型的场景
+func (h *VideoHandler) enrichPlayLinesViaJSON(playLines interface{}, statusMap map[string]service.StationStatusCompact) interface{} {
+	// 使用 json 序列化再反序列化为 []map[string]interface{}
+	data, err := json.Marshal(playLines)
+	if err != nil {
+		return playLines
+	}
+
+	var lines []map[string]interface{}
+	if err := json.Unmarshal(data, &lines); err != nil {
+		return playLines
+	}
+
+	for i, line := range lines {
+		if sourceName, ok := line["source_name"].(string); ok {
+			if status, found := statusMap[sourceName]; found {
+				lines[i]["station_status"] = gin.H{
+					"is_alive":   status.IsAlive,
+					"latency_ms": status.Latency,
+					"speed_kbps": status.Speed,
+					"weight":     status.Weight,
+				}
+			}
+		}
+	}
+
+	return lines
 }

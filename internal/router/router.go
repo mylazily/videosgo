@@ -40,6 +40,8 @@ func Setup(
 	wsH *handler.WSHandler,
 	domainH *handler.DomainHandler,
 	adRewardH *handler.AdRewardHandler,
+	// 资源站监控
+	stationH *handler.StationHandler,
 	// UA 分流中间件回调
 	redirectFn func(domain, path, ua, ip string) (targetURL string, found bool),
 ) *gin.Engine {
@@ -172,6 +174,11 @@ func Setup(
 		api.GET("/reward/history", adRewardH.GetHistory)
 		api.GET("/reward/dashboard", adRewardH.GetDashboard)
 
+		// 资源站监控（公开接口）
+		api.GET("/stations/status", stationH.GetStatus)
+		api.GET("/stations/best", stationH.GetBest)
+		api.GET("/stations/alive", stationH.GetAliveStations)
+
 		// WebSocket 弹幕
 		api.GET("/ws/danmaku/:videoId", wsH.HandleDanmaku)
 		api.GET("/ws/online/:videoId", wsH.GetOnlineCount)
@@ -256,6 +263,9 @@ func Setup(
 		admin.POST("/reward/complete", adRewardH.CompleteTask)
 		admin.POST("/reward/unlock", adRewardH.UnlockVideo)
 		admin.POST("/reward/checkin", adRewardH.DailyCheckIn)
+
+		// 资源站监控管理
+		admin.POST("/stations/check", stationH.TriggerCheck)
 	}
 
 	// ========== SEO 路由 ==========
