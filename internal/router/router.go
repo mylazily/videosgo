@@ -22,6 +22,12 @@ func Setup(
 	danmakuH *handler.DanmakuHandler,
 	rankH *handler.RankHandler,
 	collectH *handler.CollectHandler,
+	tagH *handler.TagHandler,
+	shortVideoH *handler.ShortVideoHandler,
+	recommendH *handler.RecommendHandler,
+	deviceH *handler.DeviceHandler,
+	shareH *handler.ShareHandler,
+	sitemapH *handler.SitemapHandler,
 ) *gin.Engine {
 	r := gin.New()
 
@@ -60,9 +66,37 @@ func Setup(
 		api.GET("/videos/random", videoH.GetRandom)
 		api.GET("/videos/:id", videoH.GetVideo)
 		api.GET("/videos/:id/episodes", videoH.GetEpisodes)
+		api.GET("/videos/:id/tags", tagH.GetVideoTags)
+		api.GET("/videos/:id/related", recommendH.GetRelatedVideos)
 		api.GET("/categories", videoH.GetCategories)
 		api.GET("/search", videoH.SearchVideos)
 		api.GET("/search/hot", videoH.GetSearchHot)
+
+		// 标签
+		api.GET("/tags", tagH.ListTags)
+		api.GET("/tags/:slug", tagH.GetTagBySlug)
+		api.GET("/tags/:slug/videos", tagH.GetTagVideos)
+
+		// 短视频
+		api.GET("/shorts", shortVideoH.ListShorts)
+		api.GET("/shorts/random", shortVideoH.GetRandom)
+		api.GET("/shorts/:id", shortVideoH.GetShort)
+		api.POST("/shorts/:id/view", shortVideoH.IncrementView)
+		api.POST("/shorts/:id/like", shortVideoH.IncrementLike)
+
+		// 推荐
+		api.GET("/recommendations", recommendH.GetPersonalizedRecommendations)
+
+		// 设备指纹
+		api.POST("/device/register", deviceH.RegisterDevice)
+		api.GET("/device/profile", deviceH.GetDeviceProfile)
+		api.POST("/device/unlock", deviceH.UnlockVideo)
+		api.GET("/device/check/:videoId", deviceH.CheckVideoUnlocked)
+
+		// 分享裂变
+		api.POST("/share/create", shareH.CreateShareLink)
+		api.GET("/share/:code", shareH.GetShareLink)
+		api.POST("/share/:code/click", shareH.RecordShareClick)
 
 		// 排行榜
 		api.GET("/rank/daily", rankH.GetDailyRank)
@@ -124,6 +158,16 @@ func Setup(
 		admin.GET("/collect/sources/:id", collectH.GetSource)
 		admin.POST("/collect/sources/:id/trigger", collectH.TriggerCollect)
 		admin.GET("/collect/logs", collectH.ListLogs)
+	}
+
+	// ========== SEO 路由 ==========
+	{
+		r.GET("/sitemap.xml", sitemapH.GetSitemapIndex)
+		r.GET("/sitemap-video.xml", sitemapH.GetVideoSitemap)
+		r.GET("/sitemap-tag.xml", sitemapH.GetTagSitemap)
+		r.GET("/sitemap-short.xml", sitemapH.GetShortVideoSitemap)
+		r.GET("/sitemap-actor.xml", sitemapH.GetActorSitemap)
+		r.GET("/robots.txt", sitemapH.GetRobotsTxt)
 	}
 
 	return r

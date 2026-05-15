@@ -60,6 +60,18 @@ func autoMigrate() error {
 		&model.EpisodeSource{},
 		&model.UserWatchHistory{},
 		&model.SearchHot{},
+		// 标签
+		&model.Tag{},
+		&model.VideoTag{},
+		// 短视频
+		&model.ShortVideo{},
+		// 设备指纹
+		&model.DeviceFingerprint{},
+		&model.DeviceUnlockRecord{},
+		&model.DeviceCoinBalance{},
+		// 分享裂变
+		&model.ShareLink{},
+		&model.ShareClick{},
 		// 评论
 		&model.Comment{},
 		&model.CommentLike{},

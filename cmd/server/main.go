@@ -46,6 +46,10 @@ func main() {
 	rankRepo := repository.NewRankRepo(database.DB)
 	userRepo := repository.NewUserRepo(database.DB)
 	videoRepo := repository.NewVideoRepo(database.DB)
+	tagRepo := repository.NewTagRepo(database.DB)
+	shortVideoRepo := repository.NewShortVideoRepo(database.DB)
+	deviceRepo := repository.NewDeviceRepo(database.DB)
+	shareRepo := repository.NewShareRepo(database.DB)
 
 	// 6. 初始化采集器
 	probeTimeout, _ := time.ParseDuration(cfg.Collector.ProbeTimeout)
@@ -65,6 +69,12 @@ func main() {
 	rankSvc := service.NewRankService(rankRepo)
 	userSvc := service.NewUserService(userRepo, jwtMgr)
 	videoSvc := service.NewVideoService(videoRepo)
+	tagSvc := service.NewTagService(tagRepo)
+	shortVideoSvc := service.NewShortVideoService(shortVideoRepo)
+	recommendSvc := service.NewRecommendService(tagRepo, videoRepo)
+	deviceSvc := service.NewDeviceService(deviceRepo)
+	shareSvc := service.NewShareService(shareRepo, deviceRepo)
+	sitemapSvc := service.NewSitemapService(database.DB)
 
 	// 8. 初始化 Handler 层
 	healthHandler := handler.NewHealthHandler()
@@ -74,10 +84,18 @@ func main() {
 	danmakuHandler := handler.NewDanmakuHandler(danmakuSvc)
 	rankHandler := handler.NewRankHandler(rankSvc)
 	collectHandler := handler.NewCollectHandler(collectSvc)
+	tagHandler := handler.NewTagHandler(tagSvc)
+	shortVideoHandler := handler.NewShortVideoHandler(shortVideoSvc)
+	recommendHandler := handler.NewRecommendHandler(recommendSvc)
+	deviceHandler := handler.NewDeviceHandler(deviceSvc)
+	shareHandler := handler.NewShareHandler(shareSvc)
+	sitemapHandler := handler.NewSitemapHandler(sitemapSvc)
 
 	// 9. 初始化路由
 	r := router.Setup(cfg, jwtMgr, healthHandler, videoHandler, userHandler,
-		commentHandler, danmakuHandler, rankHandler, collectHandler)
+		commentHandler, danmakuHandler, rankHandler, collectHandler,
+		tagHandler, shortVideoHandler, recommendHandler, deviceHandler,
+		shareHandler, sitemapHandler)
 
 	// 10. 启动采集调度器
 	scheduler := collector.NewScheduler(collectRepo, worker)
