@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
 )
@@ -26,14 +27,14 @@ func (r *UserRepo) Update(user *model.User) error {
 }
 
 // Delete 删除用户
-func (r *UserRepo) Delete(id uint) error {
-	return r.db.Delete(&model.User{}, id).Error
+func (r *UserRepo) Delete(id uuid.UUID) error {
+	return r.db.Delete(&model.User{}, "id = ?", id).Error
 }
 
 // GetByID 根据 ID 获取用户
-func (r *UserRepo) GetByID(id uint) (*model.User, error) {
+func (r *UserRepo) GetByID(id uuid.UUID) (*model.User, error) {
 	var user model.User
-	err := r.db.First(&user, id).Error
+	err := r.db.First(&user, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

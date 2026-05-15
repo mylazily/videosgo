@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
 )
@@ -40,7 +41,7 @@ func (r *RankRepo) Upsert(rank *model.Rank) error {
 }
 
 // IncrementScore 增加视频热度分数
-func (r *RankRepo) IncrementScore(videoID uint, score int) error {
+func (r *RankRepo) IncrementScore(videoID uuid.UUID, score int) error {
 	return r.db.Model(&model.Rank{}).
 		Where("video_id = ?", videoID).
 		UpdateColumn("score", gorm.Expr("score + ?", score)).Error

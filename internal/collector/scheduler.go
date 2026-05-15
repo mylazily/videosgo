@@ -5,18 +5,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
 )
 
 // Scheduler 采集调度器
 type Scheduler struct {
-	repo       *repository.CollectRepo
-	worker     *Worker
-	sources    map[uint]*sourceSchedule
-	mu         sync.RWMutex
-	stopCh     chan struct{}
-	wg         sync.WaitGroup
+	repo    *repository.CollectRepo
+	worker  *Worker
+	sources map[uuid.UUID]*sourceSchedule
+	mu      sync.RWMutex
+	stopCh  chan struct{}
+	wg      sync.WaitGroup
 }
 
 // sourceSchedule 采集源调度信息
@@ -31,7 +32,7 @@ func NewScheduler(repo *repository.CollectRepo, worker *Worker) *Scheduler {
 	return &Scheduler{
 		repo:    repo,
 		worker:  worker,
-		sources: make(map[uint]*sourceSchedule),
+		sources: make(map[uuid.UUID]*sourceSchedule),
 		stopCh:  make(chan struct{}),
 	}
 }
@@ -85,14 +86,14 @@ func (s *Scheduler) AddSource(source *model.CollectSource) {
 }
 
 // RemoveSource 动态移除采集源
-func (s *Scheduler) RemoveSource(sourceID uint) {
+func (s *Scheduler) RemoveSource(sourceID uuid.UUID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if ss, ok := s.sources[sourceID]; ok {
 		ss.ticker.Stop()
 		delete(s.sources, sourceID)
-		log.Printf("[调度器] 移除采集源: %s (ID: %d)", ss.source.Name, sourceID)
+		log.Printf("[调度器] 移除采集源: %s (ID: %s)", ss.source.Name, sourceID)
 	}
 }
 

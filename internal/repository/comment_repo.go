@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
 )
@@ -21,14 +22,14 @@ func (r *CommentRepo) Create(comment *model.Comment) error {
 }
 
 // Delete 删除评论
-func (r *CommentRepo) Delete(id uint) error {
-	return r.db.Delete(&model.Comment{}, id).Error
+func (r *CommentRepo) Delete(id uuid.UUID) error {
+	return r.db.Delete(&model.Comment{}, "id = ?", id).Error
 }
 
 // GetByID 根据 ID 获取评论
-func (r *CommentRepo) GetByID(id uint) (*model.Comment, error) {
+func (r *CommentRepo) GetByID(id uuid.UUID) (*model.Comment, error) {
 	var comment model.Comment
-	err := r.db.Preload("User").First(&comment, id).Error
+	err := r.db.Preload("User").First(&comment, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +37,7 @@ func (r *CommentRepo) GetByID(id uint) (*model.Comment, error) {
 }
 
 // ListByVideoID 获取视频的评论列表
-func (r *CommentRepo) ListByVideoID(videoID uint, page, pageSize int) ([]model.Comment, int64, error) {
+func (r *CommentRepo) ListByVideoID(videoID uuid.UUID, page, pageSize int) ([]model.Comment, int64, error) {
 	var comments []model.Comment
 	var total int64
 
@@ -51,7 +52,7 @@ func (r *CommentRepo) ListByVideoID(videoID uint, page, pageSize int) ([]model.C
 }
 
 // ListReplies 获取回复列表
-func (r *CommentRepo) ListReplies(parentID uint) ([]model.Comment, error) {
+func (r *CommentRepo) ListReplies(parentID uuid.UUID) ([]model.Comment, error) {
 	var comments []model.Comment
 	err := r.db.Preload("User").
 		Where("parent_id = ? AND status = ?", parentID, "active").
@@ -61,13 +62,13 @@ func (r *CommentRepo) ListReplies(parentID uint) ([]model.Comment, error) {
 }
 
 // IncrementLikeCount 增加点赞数
-func (r *CommentRepo) IncrementLikeCount(id uint) error {
+func (r *CommentRepo) IncrementLikeCount(id uuid.UUID) error {
 	return r.db.Model(&model.Comment{}).Where("id = ?", id).
 		UpdateColumn("like_count", gorm.Expr("like_count + 1")).Error
 }
 
 // DecrementLikeCount 减少点赞数
-func (r *CommentRepo) DecrementLikeCount(id uint) error {
+func (r *CommentRepo) DecrementLikeCount(id uuid.UUID) error {
 	return r.db.Model(&model.Comment{}).Where("id = ?", id).
 		UpdateColumn("like_count", gorm.Expr("GREATEST(like_count - 1, 0)")).Error
 }
@@ -78,13 +79,13 @@ func (r *CommentRepo) CreateLike(like *model.CommentLike) error {
 }
 
 // DeleteLike 删除评论点赞
-func (r *CommentRepo) DeleteLike(commentID, userID uint) error {
+func (r *CommentRepo) DeleteLike(commentID, userID uuid.UUID) error {
 	return r.db.Where("comment_id = ? AND user_id = ?", commentID, userID).
 		Delete(&model.CommentLike{}).Error
 }
 
 // IsLiked 检查用户是否已点赞
-func (r *CommentRepo) IsLiked(commentID, userID uint) (bool, error) {
+func (r *CommentRepo) IsLiked(commentID, userID uuid.UUID) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.CommentLike{}).
 		Where("comment_id = ? AND user_id = ?", commentID, userID).
@@ -93,7 +94,7 @@ func (r *CommentRepo) IsLiked(commentID, userID uint) (bool, error) {
 }
 
 // GetCountByVideoID 获取视频评论数
-func (r *CommentRepo) GetCountByVideoID(videoID uint) (int64, error) {
+func (r *CommentRepo) GetCountByVideoID(videoID uuid.UUID) (int64, error) {
 	var count int64
 	err := r.db.Model(&model.Comment{}).
 		Where("video_id = ? AND status = ?", videoID, "active").

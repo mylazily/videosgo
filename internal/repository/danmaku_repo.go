@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
 )
@@ -26,7 +27,7 @@ func (r *DanmakuRepo) BatchCreate(danmakus []model.Danmaku) error {
 }
 
 // ListByEpisodeID 获取剧集的弹幕列表
-func (r *DanmakuRepo) ListByEpisodeID(episodeID uint) ([]model.Danmaku, error) {
+func (r *DanmakuRepo) ListByEpisodeID(episodeID uuid.UUID) ([]model.Danmaku, error) {
 	var danmakus []model.Danmaku
 	err := r.db.Where("episode_id = ?", episodeID).
 		Order("time ASC").
@@ -35,7 +36,7 @@ func (r *DanmakuRepo) ListByEpisodeID(episodeID uint) ([]model.Danmaku, error) {
 }
 
 // ListByVideoID 获取视频的所有弹幕
-func (r *DanmakuRepo) ListByVideoID(videoID uint) ([]model.Danmaku, error) {
+func (r *DanmakuRepo) ListByVideoID(videoID uuid.UUID) ([]model.Danmaku, error) {
 	var danmakus []model.Danmaku
 	err := r.db.Where("video_id = ?", videoID).
 		Order("episode_id ASC, time ASC").
@@ -44,12 +45,12 @@ func (r *DanmakuRepo) ListByVideoID(videoID uint) ([]model.Danmaku, error) {
 }
 
 // DeleteByEpisodeID 删除剧集的弹幕
-func (r *DanmakuRepo) DeleteByEpisodeID(episodeID uint) error {
+func (r *DanmakuRepo) DeleteByEpisodeID(episodeID uuid.UUID) error {
 	return r.db.Where("episode_id = ?", episodeID).Delete(&model.Danmaku{}).Error
 }
 
 // GetCountByVideoID 获取视频弹幕数
-func (r *DanmakuRepo) GetCountByVideoID(videoID uint) (int64, error) {
+func (r *DanmakuRepo) GetCountByVideoID(videoID uuid.UUID) (int64, error) {
 	var count int64
 	err := r.db.Model(&model.Danmaku{}).
 		Where("video_id = ?", videoID).

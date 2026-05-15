@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
 )
@@ -26,14 +27,14 @@ func (r *VideoRepo) Update(video *model.Video) error {
 }
 
 // Delete 删除视频
-func (r *VideoRepo) Delete(id uint) error {
-	return r.db.Delete(&model.Video{}, id).Error
+func (r *VideoRepo) Delete(id uuid.UUID) error {
+	return r.db.Delete(&model.Video{}, "id = ?", id).Error
 }
 
 // GetByID 根据 ID 获取视频（含剧集）
-func (r *VideoRepo) GetByID(id uint) (*model.Video, error) {
+func (r *VideoRepo) GetByID(id uuid.UUID) (*model.Video, error) {
 	var video model.Video
-	err := r.db.Preload("Episodes").First(&video, id).Error
+	err := r.db.Preload("Episodes").First(&video, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +98,7 @@ func (r *VideoRepo) GetCategories() ([]string, error) {
 }
 
 // IncrementViewCount 增加播放量
-func (r *VideoRepo) IncrementViewCount(id uint) error {
+func (r *VideoRepo) IncrementViewCount(id uuid.UUID) error {
 	return r.db.Model(&model.Video{}).Where("id = ?", id).
 		UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error
 }
@@ -169,7 +170,7 @@ func (r *VideoRepo) CreateEpisode(episode *model.Episode) error {
 }
 
 // GetEpisodesByVideoID 获取视频的剧集列表
-func (r *VideoRepo) GetEpisodesByVideoID(videoID uint) ([]model.Episode, error) {
+func (r *VideoRepo) GetEpisodesByVideoID(videoID uuid.UUID) ([]model.Episode, error) {
 	var episodes []model.Episode
 	err := r.db.Where("video_id = ?", videoID).
 		Order("ep_index ASC").
@@ -183,7 +184,7 @@ func (r *VideoRepo) SaveWatchHistory(history *model.UserWatchHistory) error {
 }
 
 // GetWatchHistory 获取用户观看历史
-func (r *VideoRepo) GetWatchHistory(userID uint, page, pageSize int) ([]model.UserWatchHistory, int64, error) {
+func (r *VideoRepo) GetWatchHistory(userID uuid.UUID, page, pageSize int) ([]model.UserWatchHistory, int64, error) {
 	var histories []model.UserWatchHistory
 	var total int64
 

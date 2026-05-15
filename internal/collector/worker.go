@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/database"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
@@ -194,7 +196,7 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 }
 
 // createEpisodes 创建剧集
-func (w *Worker) createEpisodes(videoID uint, playLinks []PlayGroup, sourceID uint) {
+func (w *Worker) createEpisodes(videoID uuid.UUID, playLinks []PlayGroup, sourceID uuid.UUID) {
 	for _, pg := range playLinks {
 		for i, link := range pg.Links {
 			episode := &model.Episode{

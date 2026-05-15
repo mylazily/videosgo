@@ -2,6 +2,7 @@
 package repository
 
 import (
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
 )
@@ -27,14 +28,14 @@ func (r *CollectRepo) Update(source *model.CollectSource) error {
 }
 
 // Delete 删除采集源
-func (r *CollectRepo) Delete(id uint) error {
-	return r.db.Delete(&model.CollectSource{}, id).Error
+func (r *CollectRepo) Delete(id uuid.UUID) error {
+	return r.db.Delete(&model.CollectSource{}, "id = ?", id).Error
 }
 
 // GetByID 根据 ID 获取采集源
-func (r *CollectRepo) GetByID(id uint) (*model.CollectSource, error) {
+func (r *CollectRepo) GetByID(id uuid.UUID) (*model.CollectSource, error) {
 	var source model.CollectSource
-	err := r.db.First(&source, id).Error
+	err := r.db.First(&source, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func (r *CollectRepo) GetEnabled() ([]model.CollectSource, error) {
 }
 
 // UpdateLastCollect 更新上次采集时间
-func (r *CollectRepo) UpdateLastCollect(id uint) error {
+func (r *CollectRepo) UpdateLastCollect(id uuid.UUID) error {
 	return r.db.Model(&model.CollectSource{}).Where("id = ?", id).
 		Update("last_collect", gorm.Expr("NOW()")).Error
 }
@@ -84,6 +85,20 @@ func (r *CollectRepo) ListLogs(page, pageSize int) ([]model.CollectLog, int64, e
 	var total int64
 
 	db := r.db.Model(&model.CollectLog{})
+	db.Count(&total)
+
+	err := db.Offset((page - 1) * pageSize).Limit(pageSize).
+		Order("created_at DESC").
+		Find(&logs).Error
+	return logs, total, err
+}
+
+// GetLogsBySourceID 根据采集源 ID 获取日志
+func (r *CollectRepo) GetLogsBySourceID(sourceID uuid.UUID, page, pageSize int) ([]model.CollectLog, int64, error) {
+	var logs []model.CollectLog
+	var total int64
+
+	db := r.db.Model(&model.CollectLog{}).Where("source_id = ?", sourceID)
 	db.Count(&total)
 
 	err := db.Offset((page - 1) * pageSize).Limit(pageSize).

@@ -1,0 +1,83 @@
+# EditorConfig 配置文件
+# 统一代码风格，支持多种编辑器和 IDE
+# 更多信息: https://editorconfig.org
+
+# 根配置文件
+root = true
+
+# 所有文件通用配置
+[*]
+# 使用 UTF-8 编码
+charset = utf-8
+
+# 使用 LF 换行符
+end_of_line = lf
+
+# 文件末尾插入空行
+insert_final_newline = true
+
+# 删除行尾空格
+trim_trailing_whitespace = true
+
+# 缩进使用空格
+indent_style = space
+
+# 缩进大小为 4 个空格
+indent_size = 4
+
+# 最大行长度
+max_line_length = 120
+
+# Go 文件配置
+[*.go]
+indent_style = tab
+indent_size = 4
+
+# YAML 文件配置
+[*.{yml,yaml}]
+indent_size = 2
+
+# JSON 文件配置
+[*.json]
+indent_size = 2
+
+# Markdown 文件配置
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# Makefile 配置
+[Makefile]
+indent_style = tab
+
+# Shell 脚本配置
+[*.sh]
+indent_size = 2
+
+# Docker 文件配置
+[{Dockerfile,*.dockerfile}]
+indent_size = 4
+
+# Git 配置文件
+[.git*]
+indent_size = 2
+
+# 前端文件配置
+[*.{js,jsx,ts,tsx,vue,css,scss,less,html}]
+indent_size = 2
+
+# SQL 文件配置
+[*.sql]
+indent_size = 2
+
+# Proto 文件配置
+[*.proto]
+indent_size = 2
+
+# TOML 文件配置
+[*.toml]
+indent_size = 2
+
+# XML 文件配置
+[*.xml]
+indent_size = 2
