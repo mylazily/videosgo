@@ -1,6 +1,5 @@
 # ===========================================
-# GitHub Actions CI/CD - 部署到 Oracle Cloud (141.148.0.209)
-# 域名: 9901.555554.xyz
+# GitHub Actions CI/CD - 部署到 Oracle Cloud ARM (141.148.0.209)
 # ===========================================
 
 name: Deploy to Oracle Cloud
@@ -25,6 +24,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up QEMU (ARM64 emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -42,17 +47,14 @@ jobs:
             type=ref,event=branch
             latest
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push Docker image
+      - name: Build and push Docker image (ARM64)
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64
+          platforms: linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -65,69 +67,40 @@ jobs:
         with:
           host: 141.148.0.209
           username: root
-          password: zxc12345@.
+          password: ${{ secrets.DEPLOY_PASSWORD }}
           script: |
-            echo "=== 开始部署 ==="
-            
+            echo "=== 开始部署 videosgo ==="
+
             # 创建应用目录
             mkdir -p /opt/videosgo
             cd /opt/videosgo
-            
+
             # 创建 docker-compose.yml
-            cat > docker-compose.yml << 'EOF'
+            cat > docker-compose.yml << 'COMPOSE_EOF'
             version: '3.8'
-            
+
             services:
-              postgres:
-                image: postgres:16-alpine
-                container_name: videosgo-postgres
-                environment:
-                  POSTGRES_USER: videosgo
-                  POSTGRES_PASSWORD: videosgo123
-                  POSTGRES_DB: videosgo
-                volumes:
-                  - postgres_data:/var/lib/postgresql/data
-                ports:
-                  - "127.0.0.1:5432:5432"
-                healthcheck:
-                  test: ["CMD-SHELL", "pg_isready -U videosgo"]
-                  interval: 5s
-                  timeout: 5s
-                  retries: 5
-            
-              redis:
-                image: redis:7-alpine
-                container_name: videosgo-redis
-                volumes:
-                  - redis_data:/data
-                ports:
-                  - "127.0.0.1:6379:6379"
-                healthcheck:
-                  test: ["CMD", "redis-cli", "ping"]
-                  interval: 5s
-                  timeout: 5s
-                  retries: 5
-            
               backend:
                 image: ghcr.io/mylazily/videosgo:latest
                 container_name: videosgo-backend
+                restart: unless-stopped
                 environment:
                   APP_ENV: production
                   APP_PORT: 8080
                   APP_SECRET: ${{ secrets.APP_SECRET }}
-                  DB_HOST: postgres
+                  DB_HOST: ${{ secrets.DB_HOST }}
                   DB_PORT: 5432
-                  DB_USER: videosgo
-                  DB_PASSWORD: videosgo123
-                  DB_NAME: videosgo
+                  DB_USER: ${{ secrets.DB_USER }}
+                  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+                  DB_NAME: ${{ secrets.DB_NAME }}
                   DB_SSLMODE: disable
-                  REDIS_HOST: redis
+                  REDIS_HOST: ${{ secrets.REDIS_HOST }}
                   REDIS_PORT: 6379
                   JWT_SECRET: ${{ secrets.JWT_SECRET }}
                   JWT_EXPIRE_HOURS: 72
                   CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
                   TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-                  TG_WEBHOOK_URL: https://9901.555554.xyz/api/v1/tg/webhook
+                  TG_WEBHOOK_URL: ${{ secrets.TG_WEBHOOK_URL }}
                   TG_ADMIN_USER_IDS: ${{ secrets.TG_ADMIN_USER_IDS }}
                   CORS_ALLOWED_ORIGINS: "*"
                   LOG_LEVEL: info
@@ -138,14 +111,13 @@ jobs:
                     condition: service_healthy
                   redis:
                     condition: service_healthy
-                restart: unless-stopped
                 healthcheck:
                   test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/v1/health"]
                   interval: 30s
                   timeout: 10s
                   retries: 3
                   start_period: 10s
-            
+
               nginx:
                 image: nginx:alpine
                 container_name: videosgo-nginx
@@ -157,18 +129,21 @@ jobs:
                 depends_on:
                   - backend
                 restart: unless-stopped
-            
-            volumes:
-              postgres_data:
-              redis_data:
-            EOF
-            
+            COMPOSE_EOF
+
             # 创建 nginx 配置
-            cat > nginx.conf << 'EOF'
+            cat > nginx.conf << 'NGINX_EOF'
             server {
                 listen 80;
                 server_name 9901.555554.xyz;
-                
+
+                # 安全头
+                add_header X-Frame-Options "SAMEORIGIN" always;
+                add_header X-Content-Type-Options "nosniff" always;
+
+                # 请求体大小限制
+                client_max_body_size 50m;
+
                 location / {
                     proxy_pass http://backend:8080;
                     proxy_http_version 1.1;
@@ -181,12 +156,13 @@ jobs:
                     proxy_read_timeout 86400;
                 }
             }
-            EOF
-            
+            NGINX_EOF
+
             # 拉取并启动
-            docker compose pull
-            docker compose up -d --force-recreate
+            docker compose pull backend
+            docker compose up -d --force-recreate backend nginx
             docker image prune -f
-            
+
             echo "=== 部署完成 ==="
-            echo "健康检查: https://9901.555554.xyz/api/v1/health"
+            echo "健康检查: curl -s http://localhost:8080/api/v1/health"
+            curl -s http://localhost:8080/api/v1/health || echo "警告: 健康检查失败"
