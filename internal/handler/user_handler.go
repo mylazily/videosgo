@@ -66,7 +66,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 			"id":       user.ID,
 			"username": user.Username,
 			"avatar":   user.Avatar,
-			"is_admin": user.IsAdmin,
+			"is_admin": user.Role == "admin",
 		},
 	})
 }
