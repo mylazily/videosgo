@@ -160,9 +160,11 @@ func (r *AdRewardRepo) DeductCoins(fingerprintID uuid.UUID, amount int64) error 
 // EnsureCoinBalance 确保金币余额记录存在
 func (r *AdRewardRepo) EnsureCoinBalance(fingerprintID uuid.UUID) error {
 	var count int64
-	r.db.Model(&model.DeviceCoinBalance{}).
+	if err := r.db.Model(&model.DeviceCoinBalance{}).
 		Where("fingerprint_id = ?", fingerprintID).
-		Count(&count)
+		Count(&count).Error; err != nil {
+		return fmt.Errorf("查询金币余额失败: %w", err)
+	}
 	if count == 0 {
 		return r.db.Create(&model.DeviceCoinBalance{
 			FingerprintID: fingerprintID,

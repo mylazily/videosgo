@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
@@ -97,10 +99,16 @@ func (r *ShortVideoRepo) Search(keyword string, page, pageSize int) ([]model.Sho
 	var shorts []model.ShortVideo
 	var total int64
 
+	// 转义 SQL LIKE 特殊字符
+	keyword = strings.ReplaceAll(keyword, "%", "\\%")
+	keyword = strings.ReplaceAll(keyword, "_", "\\_")
+
 	db := r.db.Model(&model.ShortVideo{}).
-		Where("status = ? AND (title LIKE ? OR description LIKE ?)",
+		Where("status = ? AND (title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')",
 			"active", "%"+keyword+"%", "%"+keyword+"%")
-	db.Count(&total)
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 
 	err := db.Offset((page - 1) * pageSize).Limit(pageSize).
 		Order("created_at DESC").

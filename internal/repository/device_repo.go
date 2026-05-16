@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
@@ -28,9 +30,12 @@ func (r *DeviceRepo) GetOrCreateByFingerprint(hash string) (*model.DeviceFingerp
 			return nil, err
 		}
 		// 创建硬币余额记录
-		r.db.Create(&model.DeviceCoinBalance{
+		if err := r.db.Create(&model.DeviceCoinBalance{
 			FingerprintID: device.ID,
-		})
+		}).Error; err != nil {
+			// 硬币余额创建失败，记录日志但不影响设备创建成功
+			fmt.Printf("[DeviceRepo] 创建设备硬币余额失败: %v\n", err)
+		}
 		return &device, nil
 	}
 	if err != nil {
@@ -115,9 +120,11 @@ func (r *DeviceRepo) DeductCoins(fingerprintID uuid.UUID, amount int64) error {
 // EnsureCoinBalance 确保硬币余额记录存在
 func (r *DeviceRepo) EnsureCoinBalance(fingerprintID uuid.UUID) error {
 	var count int64
-	r.db.Model(&model.DeviceCoinBalance{}).
+	if err := r.db.Model(&model.DeviceCoinBalance{}).
 		Where("fingerprint_id = ?", fingerprintID).
-		Count(&count)
+		Count(&count).Error; err != nil {
+		return fmt.Errorf("查询硬币余额失败: %w", err)
+	}
 	if count == 0 {
 		return r.db.Create(&model.DeviceCoinBalance{
 			FingerprintID: fingerprintID,

@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"gorm.io/gorm"
@@ -123,7 +125,11 @@ func (r *TagRepo) GetVideosByTag(tagID uuid.UUID, page, pageSize int) ([]model.V
 // SearchTags 模糊搜索标签
 func (r *TagRepo) SearchTags(keyword string) ([]model.Tag, error) {
 	var tags []model.Tag
-	err := r.db.Where("status = ? AND (name LIKE ? OR slug LIKE ?)",
+	// 转义 SQL LIKE 特殊字符
+	keyword = strings.ReplaceAll(keyword, "%", "\\%")
+	keyword = strings.ReplaceAll(keyword, "_", "\\_")
+
+	err := r.db.Where("status = ? AND (name LIKE ? ESCAPE '\\' OR slug LIKE ? ESCAPE '\\')",
 		"active", "%"+keyword+"%", "%"+keyword+"%").
 		Order("video_count DESC").
 		Limit(20).
