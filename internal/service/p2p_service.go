@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/google/uuid"
 	"fmt"
 	"sync"
 	"time"
@@ -45,7 +46,7 @@ func (s *P2PService) Heartbeat(peerID, videoID string) error {
 			now := time.Now()
 			peer.LastHeartbeat = &now
 			if videoID != "" {
-				peer.CurrentVideoID = videoID
+				peer.CurrentVideoID = uuid.MustParse(videoID)
 			}
 		}
 	}
@@ -58,7 +59,7 @@ func (s *P2PService) OfferSignal(roomID, peerID, fingerprintID, targetPeerID, sd
 	signal := &model.SignalChannel{
 		RoomID:        roomID,
 		PeerID:        peerID,
-		FingerprintID: fingerprintID,
+		FingerprintID: uuid.MustParse(fingerprintID),
 		SignalType:    "offer",
 		SDPData:       sdpData,
 		TargetPeerID:  targetPeerID,
@@ -75,7 +76,7 @@ func (s *P2PService) AnswerSignal(roomID, peerID, fingerprintID, targetPeerID, s
 	signal := &model.SignalChannel{
 		RoomID:        roomID,
 		PeerID:        peerID,
-		FingerprintID: fingerprintID,
+		FingerprintID: uuid.MustParse(fingerprintID),
 		SignalType:    "answer",
 		SDPData:       sdpData,
 		TargetPeerID:  targetPeerID,
@@ -90,7 +91,7 @@ func (s *P2PService) ExchangeICE(roomID, peerID, fingerprintID, targetPeerID, ic
 	signal := &model.SignalChannel{
 		RoomID:        roomID,
 		PeerID:        peerID,
-		FingerprintID: fingerprintID,
+		FingerprintID: uuid.MustParse(fingerprintID),
 		SignalType:    "ice",
 		ICECandidate:  iceCandidate,
 		TargetPeerID:  targetPeerID,
@@ -125,7 +126,7 @@ func (s *P2PService) GetPeersForVideo(videoID string) ([]model.PeerRegistry, err
 	var peers []model.PeerRegistry
 	s.memoryPeers.Range(func(key, value interface{}) bool {
 		if peer, ok := value.(*model.PeerRegistry); ok {
-			if peer.IsActive && peer.CurrentVideoID == videoID {
+			if peer.IsActive && peer.CurrentVideoID.String() == videoID {
 				peers = append(peers, *peer)
 			}
 		}
