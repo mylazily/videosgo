@@ -75,8 +75,8 @@ func NewTitleCleaner() *TitleCleaner {
 		suffixPatterns: suffixPatterns,
 		prefixPatterns: prefixPatterns,
 		yearRegex:      regexp.MustCompile(`(?:\((\d{4})\)|(\d{4})年|[\s\-_](\d{4})[\s\-_])`),
-		seasonRegex:    regexp.MustCompile(`第([零一二三四五六七八九十\d]+)季|S(\d+)|Season\s*(\d+)`, regexp.IgnoreCase),
-		episodeRegex:   regexp.MustCompile(`第([零一二三四五六七八九十百千万\d]+)[集期]|EP?(\d+)|第([零一二三四五六七八九十百千万\d]+)话`, regexp.IgnoreCase),
+		seasonRegex:    regexp.MustCompile(`(?i)第([零一二三四五六七八九十\d]+)季|S(\d+)|Season\s*(\d+)`),
+		episodeRegex:   regexp.MustCompile(`(?i)第([零一二三四五六七八九十百千万\d]+)[集期]|EP?(\d+)|第([零一二三四五六七八九十百千万\d]+)话`),
 	}
 }
 
@@ -237,10 +237,9 @@ func levenshteinDistance(s1, s2 string) int {
 				cost = 0
 			}
 			curr[j] = min(
-				prev[j]+1,      // 删除
-				curr[j-1]+1,    // 插入
-				prev[j-1]+cost, // 替换
-			)
+					min(prev[j]+1, curr[j-1]+1), // 删除, 插入
+					prev[j-1]+cost,              // 替换
+				)
 		}
 		prev, curr = curr, prev
 	}
