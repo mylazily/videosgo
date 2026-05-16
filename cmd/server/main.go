@@ -185,9 +185,7 @@ func main() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
 		for range ticker.C {
-			if err := p2pSvc.Cleanup(); err != nil {
-				log.Printf("[定时任务] P2P 清理失败: %v", err)
-			}
+			p2pSvc.Cleanup()
 		}
 	}()
 	log.Println("[启动] P2P 清理定时任务已启动（每5分钟）")
@@ -198,13 +196,9 @@ func main() {
 		defer ticker.Stop()
 		// 首次启动时延迟 30 秒执行
 		time.Sleep(30 * time.Second)
-		if err := siteSvc.HealthCheckAll(); err != nil {
-			log.Printf("[定时任务] 站群健康检查失败: %v", err)
-		}
+		siteSvc.HealthCheckAll()
 		for range ticker.C {
-			if err := siteSvc.HealthCheckAll(); err != nil {
-				log.Printf("[定时任务] 站群健康检查失败: %v", err)
-			}
+			siteSvc.HealthCheckAll()
 		}
 	}()
 	log.Println("[启动] 站群健康检查定时任务已启动（每10分钟）")
