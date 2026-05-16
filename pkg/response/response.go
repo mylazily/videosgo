@@ -87,7 +87,3 @@ func InternalError(c *gin.Context, message string) {
 	Error(c, http.StatusInternalServerError, message)
 }
 
-// TooManyRequests 429 请求过多
-func TooManyRequests(c *gin.Context, message string) {
-	Error(c, http.StatusTooManyRequests, message)
-}

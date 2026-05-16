@@ -29,17 +29,11 @@ var botKeywords = []string{
 	"DotBot",
 }
 
-// 敏感地区 IP 段（示例，实际应从配置或 GeoIP 数据库加载）
-var sensitiveRegions = []string{
-	// 可以根据实际需求配置
-}
-
 // UASplit UA/IP 智能分流中间件
 // 检测逻辑：
 // 1. 检查是否匹配 301 重定向规则
 // 2. 检测 User-Agent 是否为搜索引擎爬虫
-// 3. 检测 IP 地区是否为敏感地区
-// 4. 正常用户不做任何处理
+// 3. 正常用户不做任何处理
 func UASplit(redirectFn func(domain, path, ua, ip string) (targetURL string, found bool)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ua := c.GetHeader("User-Agent")
@@ -61,11 +55,6 @@ func UASplit(redirectFn func(domain, path, ua, ip string) (targetURL string, fou
 		if isBotUA(ua) {
 			c.Set("is_bot", true)
 			c.Set("bot_type", detectBotType(ua))
-		}
-
-		// 3. 检测 IP 地区
-		if isSensitiveIP(ip) {
-			c.Set("is_sensitive_region", true)
 		}
 
 		c.Next()
@@ -132,43 +121,6 @@ func detectBotType(ua string) string {
 	default:
 		return "unknown"
 	}
-}
-
-// isSensitiveIP 检测 IP 是否属于敏感地区
-func isSensitiveIP(ip string) bool {
-	if ip == "" || len(sensitiveRegions) == 0 {
-		return false
-	}
-
-	// 先检查 Redis 缓存
-	if database.RDB != nil {
-		cacheKey := "ip:sensitive:" + ip
-		cached, err := database.RDB.Get(context.Background(), cacheKey).Result()
-		if err == nil {
-			return cached == "1"
-		}
-	}
-
-	// 简单的前缀匹配（生产环境应使用 GeoIP 数据库）
-	isSensitive := false
-	for _, region := range sensitiveRegions {
-		if strings.HasPrefix(ip, region) {
-			isSensitive = true
-			break
-		}
-	}
-
-	// 写入 Redis 缓存（24 小时过期）
-	if database.RDB != nil {
-		cacheKey := "ip:sensitive:" + ip
-		val := "0"
-		if isSensitive {
-			val = "1"
-		}
-		database.RDB.Set(context.Background(), cacheKey, val, 24*time.Hour)
-	}
-
-	return isSensitive
 }
 
 // hashUA 对 UA 字符串进行简单哈希（用于缓存 key）

@@ -18,17 +18,15 @@ type Claims struct {
 
 // JWTManager JWT 管理器
 type JWTManager struct {
-	secretKey     []byte
-	expireHours   int
-	refreshHours  int
+	secretKey   []byte
+	expireHours int
 }
 
 // NewJWTManager 创建新的 JWT 管理器
 func NewJWTManager(secretKey string, expireHours int) *JWTManager {
 	return &JWTManager{
-		secretKey:    []byte(secretKey),
-		expireHours:  expireHours,
-		refreshHours: expireHours * 7, // 刷新令牌有效期为访问令牌的 7 倍
+		secretKey:   []byte(secretKey),
+		expireHours: expireHours,
 	}
 }
 
@@ -54,28 +52,6 @@ func (m *JWTManager) GenerateToken(userID string, username string, isAdmin bool)
 	return tokenString, nil
 }
 
-// GenerateRefreshToken 生成刷新令牌
-func (m *JWTManager) GenerateRefreshToken(userID string, username string, isAdmin bool) (string, error) {
-	claims := &Claims{
-		UserID:   userID,
-		Username: username,
-		IsAdmin:  isAdmin,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(m.refreshHours) * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    "videosgo-refresh",
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(m.secretKey)
-	if err != nil {
-		return "", fmt.Errorf("生成刷新令牌失败: %w", err)
-	}
-	return tokenString, nil
-}
-
 // ParseToken 解析并验证令牌
 func (m *JWTManager) ParseToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
@@ -94,13 +70,4 @@ func (m *JWTManager) ParseToken(tokenString string) (*Claims, error) {
 	}
 
 	return claims, nil
-}
-
-// IsRefreshToken 检查是否为刷新令牌
-func (m *JWTManager) IsRefreshToken(tokenString string) bool {
-	claims, err := m.ParseToken(tokenString)
-	if err != nil {
-		return false
-	}
-	return claims.Issuer == "videosgo-refresh"
 }
