@@ -3,7 +3,7 @@
 # ===========================================
 
 # ---- 构建阶段 ----
-FROM golang:1.26-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
 # 安装 git（某些依赖可能需要）
 RUN apk add --no-cache git ca-certificates tzdata
