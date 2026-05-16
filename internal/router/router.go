@@ -167,6 +167,7 @@ func Setup(
 		// 域名轮询（公开接口）
 		api.GET("/domain/active", domainH.GetActiveDomain)
 		api.GET("/domain/list", domainH.GetDomainList)
+		api.GET("/domains/healthy", domainH.GetHealthyDomains)
 
 		// 广告金币（公开接口）
 		api.GET("/reward/tasks", adRewardH.ListTasks)

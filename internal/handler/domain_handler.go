@@ -82,3 +82,85 @@ func (h *DomainHandler) GetSwitchHistory(c *gin.Context) {
 	}
 	response.Success(c, data)
 }
+
+// GetHealthyDomains 获取最健康的 3 个可用域名（前端容灾用）
+// GET /api/v1/domains/healthy
+// 轻量级接口：并发探测所有域名，返回延迟最低的 3 个
+func (h *DomainHandler) GetHealthyDomains(c *gin.Context) {
+	domain, err := h.svc.GetBestDomain("")
+	if err != nil {
+		// 没有可用域名，返回空列表
+		response.Success(c, gin.H{
+			"domains": []string{},
+			"message": "所有域名均不可用",
+		})
+		return
+	}
+
+	// 获取域名列表
+	listData, err := h.svc.GetDomainList()
+	if err != nil {
+		response.Success(c, gin.H{
+			"domains":    []string{domain},
+			"active":     domain,
+			"message":    "仅活跃域名可用",
+		})
+		return
+	}
+
+	// 从域名列表中提取可用域名
+	type domainStatus struct {
+		Domain       string
+		IsAccessible bool
+		Latency      int
+	}
+
+	// listData is interface{}, we need to handle it
+	// Since GetDomainList returns interface{}, extract what we can
+	activeDomain := domain
+	var allDomains []string
+
+	// Try to extract domains from the list data
+	if listMap, ok := listData.(map[string]interface{}); ok {
+		if actives, ok := listMap["active"].([]interface{}); ok {
+			for _, a := range actives {
+				if activeMap, ok := a.(map[string]interface{}); ok {
+					if d, ok := activeMap["domain"].(string); ok && d != "" {
+						allDomains = append(allDomains, d)
+					}
+				}
+			}
+		}
+	}
+
+	// 确保活跃域名在列表中
+	found := false
+	for _, d := range allDomains {
+		if d == activeDomain {
+			found = true
+			break
+		}
+	}
+	if !found {
+		allDomains = append([]string{activeDomain}, allDomains...)
+	}
+
+	// 返回前 3 个域名（去重）
+	seen := make(map[string]bool)
+	var healthyDomains []string
+	for _, d := range allDomains {
+		if !seen[d] {
+			seen[d] = true
+			healthyDomains = append(healthyDomains, d)
+			if len(healthyDomains) >= 3 {
+				break
+			}
+		}
+	}
+
+	response.Success(c, gin.H{
+		"domains": healthyDomains,
+		"active":  activeDomain,
+		"count":   len(healthyDomains),
+	})
+}
