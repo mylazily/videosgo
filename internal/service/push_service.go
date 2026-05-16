@@ -5,8 +5,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -74,7 +72,7 @@ func (s *PushService) Subscribe(fingerprintID, endpoint, p256dhKey, authKey, use
 	if err == nil && existing != nil {
 		// 更新已有订阅
 		existing.IsActive = true
-		existing.FingerprintID = fingerprintID
+		existing.FingerprintID = uuid.MustParse(fingerprintID)
 		existing.P256DHKey = p256dhKey
 		existing.AuthKey = authKey
 		existing.UserAgent = userAgent
@@ -86,7 +84,7 @@ func (s *PushService) Subscribe(fingerprintID, endpoint, p256dhKey, authKey, use
 	}
 
 	sub := &model.PushSubscription{
-		FingerprintID: fingerprintID,
+		FingerprintID: uuid.MustParse(fingerprintID),
 		Endpoint:      endpoint,
 		P256DHKey:     p256dhKey,
 		AuthKey:       authKey,
@@ -120,7 +118,7 @@ func (s *PushService) SendNotification(title, body, icon, link, tag, targetType,
 		Link:          link,
 		Tag:           tag,
 		TargetType:    targetType,
-		TargetVideoID: targetVideoID,
+		TargetVideoID: uuid.MustParse(targetVideoID),
 		Status:        "pending",
 	}
 
@@ -179,7 +177,7 @@ func (s *PushService) sendNotificationAsync(notif *model.PushNotification) {
 	sentCount := 0
 	for _, sub := range subs {
 		// 根据目标类型过滤
-		if notif.TargetType == "video" && notif.TargetVideoID != "" {
+		if notif.TargetType == "video" && notif.TargetVideoID != uuid.Nil {
 			// 可以根据用户偏好进一步过滤，这里简单发送给所有活跃订阅
 		}
 
