@@ -10,7 +10,7 @@ require (
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/spf13/viper v1.19.0
-	golang.org/x/crypto v0.31.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/time v0.11.0
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.12
