@@ -277,4 +277,3 @@ func (s *DomainRotationService) GetDomainList() (interface{}, error) {
 func (s *DomainRotationService) GetSwitchHistory(limit int) (interface{}, error) {
 	return s.repo.GetSwitchHistory(limit)
 }
-// GetSwitchHistory 获取切换历史

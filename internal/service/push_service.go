@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
@@ -19,11 +20,12 @@ import (
 
 // PushService 推送服务
 type PushService struct {
-	repo      *repository.PushRepo
-	vapidKey  *ecdsa.PrivateKey
-	vapidSub  string // VAPID 主题（通常是 mailto: 或 https:）
-	sendQueue chan pushTask
-	wg        sync.WaitGroup
+	repo           *repository.PushRepo
+	vapidKey       *ecdsa.PrivateKey
+	vapidSub       string // VAPID 主题（通常是 mailto: 或 https:）
+	vapidPrivateKey string // VAPID 私钥字符串
+	sendQueue      chan pushTask
+	wg             sync.WaitGroup
 }
 
 // pushTask 推送任务
@@ -220,8 +222,8 @@ func (s *PushService) sendPush(sub model.PushSubscription, payload []byte) {
 	req.Header.Set("Content-Encoding", "aes128gcm")
 
 	// 生成 VAPID JWT
-	vapidJWT := s.generateVAPIDJWT()
-	if vapidJWT != "" {
+	vapidJWT, err := s.generateVAPIDJWT(sub.Endpoint)
+	if err == nil && vapidJWT != "" {
 		req.Header.Set("Authorization", "vapid t="+vapidJWT)
 	}
 
@@ -239,28 +241,25 @@ func (s *PushService) sendPush(sub model.PushSubscription, payload []byte) {
 }
 
 // generateVAPIDJWT 生成 VAPID JWT Token
-func (s *PushService) generateVAPIDJWT() string {
-	// VAPID JWT 需要包含 aud, exp, sub 三个字段
-	// 这里使用简化实现，生产环境应使用完整的 JWT 库
-	// aud: origin of the push service
-	// exp: expiration time (max 24 hours)
-	// sub: subscriber (mailto: or https:)
-
-	if s.vapidKey == nil {
-		return ""
+func (s *PushService) generateVAPIDJWT(audience string) (string, error) {
+	// VAPID JWT claims
+	now := time.Now()
+	claims := jwt.MapClaims{
+		"aud": audience,
+		"exp": now.Add(12 * time.Hour).Unix(),
+		"iat": now.Unix(),
 	}
 
-	// 获取公钥的原始字节
-	pubKeyBytes := elliptic.Marshal(s.vapidKey.Curve, s.vapidKey.PublicKey.X, s.vapidKey.PublicKey.Y)
-	hash := sha256.Sum256(pubKeyBytes)
-	vapidPublicKey := base64.RawURLEncoding.EncodeToString(hash[:])
+	// Create token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	// 简化的 VAPID JWT 生成
-	// 生产环境应使用完整的 JWT 库实现
-	_ = vapidPublicKey
+	// Sign with VAPID private key
+	tokenString, err := token.SignedString([]byte(s.vapidPrivateKey))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign VAPID JWT: %w", err)
+	}
 
-	// 返回占位 JWT（实际使用时需要替换为完整的 JWT 实现）
-	return ""
+	return tokenString, nil
 }
 
 // GetNotificationStats 获取推送统计

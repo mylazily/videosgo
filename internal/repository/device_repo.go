@@ -125,3 +125,10 @@ func (r *DeviceRepo) EnsureCoinBalance(fingerprintID uuid.UUID) error {
 	}
 	return nil
 }
+
+// UpdateUnlockExpiry 更新解锁记录的过期时间
+func (r *DeviceRepo) UpdateUnlockExpiry(fingerprintID uuid.UUID, expiresAt interface{}) error {
+	return r.db.Model(&model.DeviceCoinBalance{}).
+		Where("fingerprint_id = ?", fingerprintID).
+		Update("unlock_expiry", expiresAt).Error
+}

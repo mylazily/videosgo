@@ -19,6 +19,10 @@ type Config struct {
 	Collector CollectorConfig `mapstructure:"collector"`
 	Security  SecurityConfig  `mapstructure:"security"`
 	Log       LogConfig       `mapstructure:"log"`
+	TG        TGConfig        `mapstructure:"tg"`
+	Push      PushConfig      `mapstructure:"push"`
+	Payment   PaymentConfig   `mapstructure:"payment"`
+	Domain    DomainConfig    `mapstructure:"domain"`
 }
 
 // AppConfig 应用配置
@@ -248,6 +252,31 @@ func (l *LogConfig) Validate() error {
 		l.Level = "info"
 	}
 	return nil
+}
+
+// TGConfig Telegram Bot 配置
+type TGConfig struct {
+	BotToken   string `mapstructure:"bot_token"`
+	WebhookURL string `mapstructure:"webhook_url"`
+}
+
+// PushConfig Web Push 配置
+type PushConfig struct {
+	VAPIDPublicKey  string `mapstructure:"vapid_public_key"`
+	VAPIDPrivateKey string `mapstructure:"vapid_private_key"`
+	VAPIDSubject    string `mapstructure:"vapid_subject"`
+}
+
+// PaymentConfig 支付配置
+type PaymentConfig struct {
+	DefaultChannel string `mapstructure:"default_channel"`
+	OrderExpireSec int    `mapstructure:"order_expire_sec"`
+}
+
+// DomainConfig 域名轮换配置
+type DomainConfig struct {
+	CheckIntervalSec int    `mapstructure:"check_interval_sec"`
+	DefaultRegion    string `mapstructure:"default_region"`
 }
 
 var GlobalConfig *Config

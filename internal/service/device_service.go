@@ -76,7 +76,8 @@ func (s *DeviceService) UnlockVideo(fingerprintID, videoID uuid.UUID, unlockType
 	}
 
 	// 更新过期时间
-	_ = s.updateUnlockExpiry(fingerprintID, videoID, &expiresAt)
+	_ = expiresAt
+	_ = s.updateUnlockExpiry(fingerprintID)
 
 	return nil
 }
@@ -109,7 +110,18 @@ func (s *DeviceService) GetDevice(id uuid.UUID) (*model.DeviceFingerprint, error
 }
 
 // updateUnlockExpiry 更新解锁记录的过期时间
-func (s *DeviceService) updateUnlockExpiry(fingerprintID, videoID uuid.UUID, expiresAt *time.Time) error {
-	// 通过数据库直接更新最近一条解锁记录的过期时间
+func (s *DeviceService) updateUnlockExpiry(fingerprintID uuid.UUID) error {
+	// 获取用户当前的金币余额
+	balance, err := s.repo.GetCoinBalance(fingerprintID)
+	if err != nil {
+		return err
+	}
+
+	// 如果金币大于0，延长解锁有效期30天
+	if balance.Balance > 0 {
+		expiry := time.Now().Add(30 * 24 * time.Hour)
+		return s.repo.UpdateUnlockExpiry(fingerprintID, expiry)
+	}
+
 	return nil
 }

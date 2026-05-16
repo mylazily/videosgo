@@ -126,11 +126,16 @@ func (r *XRepo) MarkQueueAsPosted(id uuid.UUID) error {
 
 // MarkQueueAsFailed 标记队列为失败
 func (r *XRepo) MarkQueueAsFailed(id uuid.UUID) error {
-	return r.db.Model(&model.XPostQueue{}).Where("id = ?", id).
+	// 先增加重试计数
+	err := r.db.Model(&model.XPostQueue{}).
+		Where("id = ?", id).
 		Update("retry_count", gorm.Expr("retry_count + 1")).Error
+	if err != nil {
+		return err
+	}
+
 	// 如果重试次数超过最大值，标记为失败
-	r.db.Model(&model.XPostQueue{}).
+	return r.db.Model(&model.XPostQueue{}).
 		Where("id = ? AND retry_count >= max_retries", id).
-		Update("status", "failed")
-	return nil
+		Update("status", "failed").Error
 }
