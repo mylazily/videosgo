@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
 )
