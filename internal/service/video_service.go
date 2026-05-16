@@ -198,8 +198,8 @@ func (s *VideoService) RecordWatch(userID, videoID string, progress, duration fl
 		history := &model.UserWatchHistory{
 			UserID:   parsedUserID,
 			VideoID:  parsedVideoID,
-			Progress: progress,
-			Duration: duration,
+			Progress: int(progress),
+			Duration: int(duration),
 		}
 		return s.repo.SaveWatchHistory(history)
 	}
