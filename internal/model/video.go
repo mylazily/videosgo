@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // StringArray 字符串数组类型（兼容 PostgreSQL text[] 和 JSON 序列化）
@@ -125,27 +126,42 @@ func (p *PlayLinesJSON) UnmarshalJSON(data []byte) error {
 
 // Video 视频模型
 type Video struct {
-	ID          uuid.UUID    `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	Title       string       `gorm:"type:varchar(200);not null;index;comment:标题" json:"title"`
-	SubTitle    string       `gorm:"type:varchar(200);comment:副标题" json:"sub_title"`
-	Cover       string       `gorm:"type:varchar(500);comment:封面图" json:"cover"`
-	Description string       `gorm:"type:text;comment:简介" json:"description"`
-	CategoryID  int          `gorm:"index;default:0;comment:分类 ID" json:"category_id"`
-	Category    string       `gorm:"type:varchar(50);index;comment:分类名称" json:"category"`
-	Year        string       `gorm:"type:varchar(10);comment:年份" json:"year"`
-	Area        string       `gorm:"type:varchar(50);comment:地区" json:"area"`
-	Director    string       `gorm:"type:varchar(200);comment:导演" json:"director"`
-	Actors      string       `gorm:"type:text;comment:演员" json:"actors"`
-	Tags        StringArray  `gorm:"type:jsonb;comment:标签" json:"tags"`
-	Remarks     string       `gorm:"type:varchar(100);comment:备注" json:"remarks"`
-	PlayLinks   StringArray  `gorm:"type:jsonb;comment:播放链接 JSONB" json:"play_links"`
-	Status      string       `gorm:"type:varchar(20);default:active;comment:状态" json:"status"`
-	SourceID    uuid.UUID    `gorm:"type:uuid;index;comment:来源采集源 ID" json:"source_id"`
-	ViewCount   int64        `gorm:"default:0;comment:播放量" json:"view_count"`
-	LikeCount   int64        `gorm:"default:0;comment:点赞数" json:"like_count"`
-	Score       float64      `gorm:"default:0;comment:评分" json:"score"`
-	CreatedAt   time.Time    `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt   time.Time    `gorm:"autoUpdateTime" json:"updated_at"`
+	ID               uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	Title            string         `gorm:"type:varchar(500);not null;index;comment:标题" json:"title"`
+	SubTitle         string         `gorm:"type:varchar(500);comment:副标题" json:"sub_title"`
+	CoverURL         string         `gorm:"type:varchar(1024);comment:封面图" json:"cover_url"`
+	CoverVertical    string         `gorm:"type:varchar(1024);comment:竖版封面图" json:"cover_vertical"`
+	Description      string         `gorm:"type:text;comment:简介" json:"description"`
+	Category         string         `gorm:"type:varchar(50);index;comment:分类名称" json:"category"`
+	Year             int16          `gorm:"comment:年份" json:"year"`
+	Area             string         `gorm:"type:varchar(50);comment:地区" json:"area"`
+	Director         string         `gorm:"type:varchar(200);comment:导演" json:"director"`
+	Actors           string         `gorm:"type:text;comment:演员" json:"actors"`
+	Tags             StringArray    `gorm:"type:jsonb;comment:标签" json:"tags"`
+	Remarks          string         `gorm:"type:varchar(100);comment:备注" json:"remarks"`
+	PlayLinks        StringArray    `gorm:"type:jsonb;comment:播放链接 JSONB" json:"play_links"`
+	Status           string         `gorm:"type:varchar(20);default:pending;comment:状态" json:"status"`
+	SourceID         uuid.UUID      `gorm:"type:uuid;index;comment:来源采集源 ID" json:"source_id"`
+	ViewCount        int64          `gorm:"default:0;comment:播放量" json:"view_count"`
+	LikeCount        int64          `gorm:"default:0;comment:点赞数" json:"like_count"`
+	Score            float64        `gorm:"default:0;comment:评分" json:"score"`
+	ScoreCount       int            `gorm:"default:0;comment:评分人数" json:"score_count"`
+	TotalEpisodes    int            `gorm:"default:0;comment:总集数" json:"total_episodes"`
+	CurrentEpisode   int            `gorm:"default:0;comment:当前集数" json:"current_episode"`
+	DailyViewCount   int            `gorm:"default:0;comment:日播放量" json:"daily_view_count"`
+	WeeklyViewCount  int            `gorm:"default:0;comment:周播放量" json:"weekly_view_count"`
+	MonthlyViewCount int            `gorm:"default:0;comment:月播放量" json:"monthly_view_count"`
+	DislikeCount     int            `gorm:"default:0;comment:点踩数" json:"dislike_count"`
+	FavoriteCount    int            `gorm:"default:0;comment:收藏数" json:"favorite_count"`
+	CommentCount     int            `gorm:"default:0;comment:评论数" json:"comment_count"`
+	SourceFrom       string         `gorm:"type:varchar(100);comment:来源平台" json:"source_from"`
+	SourceVideoID    string         `gorm:"type:varchar(255);comment:来源视频ID" json:"source_video_id"`
+	ExtraInfo        JSONB          `gorm:"type:jsonb;comment:额外信息" json:"extra_info"`
+	SearchVector     string         `gorm:"type:tsvector;comment:搜索向量" json:"-"`
+	PublishedAt      *time.Time     `gorm:"comment:发布时间" json:"published_at"`
+	CreatedAt        time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt        time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"index;comment:删除时间" json:"-"`
 
 	// 标题清洗与去重
 	CleanTitle string `gorm:"type:varchar(255);index;comment:清洗后的纯净标题（用于去重匹配）" json:"clean_title"`
@@ -206,8 +222,8 @@ func (v *VideoSource) BeforeCreate() error {
 type Episode struct {
 	ID       uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	VideoID  uuid.UUID `gorm:"type:uuid;index;not null;comment:视频 ID" json:"video_id"`
-	Name     string    `gorm:"type:varchar(100);comment:集名" json:"name"`
-	EpIndex  int       `gorm:"default:0;comment:集序号" json:"ep_index"`
+	Name     string    `gorm:"type:varchar(500);comment:集名" json:"name"`
+	Number   int       `gorm:"default:0;comment:集序号" json:"number"`
 	URL      string    `gorm:"type:varchar(500);comment:播放地址" json:"url"`
 	URLType  string    `gorm:"type:varchar(20);default:m3u8;comment:播放类型" json:"url_type"`
 	SourceID uuid.UUID `gorm:"type:uuid;comment:来源采集源 ID" json:"source_id"`
@@ -254,8 +270,8 @@ type UserWatchHistory struct {
 	ID        uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	UserID    uuid.UUID `gorm:"type:uuid;uniqueIndex:idx_user_video;not null;comment:用户 ID" json:"user_id"`
 	VideoID   uuid.UUID `gorm:"type:uuid;uniqueIndex:idx_user_video;not null;comment:视频 ID" json:"video_id"`
-	Progress  float64   `gorm:"default:0;comment:观看进度（秒）" json:"progress"`
-	Duration  float64   `gorm:"default:0;comment:总时长（秒）" json:"duration"`
+	Progress  int       `gorm:"default:0;comment:观看进度（秒）" json:"progress"`
+	Duration  int       `gorm:"default:0;comment:总时长（秒）" json:"duration"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 

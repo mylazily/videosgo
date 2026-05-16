@@ -48,6 +48,18 @@ func InitPostgres(cfg *config.DatabaseConfig) error {
 	return nil
 }
 
+// ClosePostgres 关闭 PostgreSQL 连接
+func ClosePostgres() error {
+	if DB != nil {
+		sqlDB, err := DB.DB()
+		if err != nil {
+			return err
+		}
+		return sqlDB.Close()
+	}
+	return nil
+}
+
 // autoMigrate 自动迁移数据库表结构
 func autoMigrate() error {
 	return DB.AutoMigrate(

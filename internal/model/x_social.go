@@ -11,7 +11,7 @@ type XAccount struct {
 	ID                uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	AccountID         string     `gorm:"type:varchar(100);uniqueIndex;not null;comment:账号 ID" json:"account_id"`
 	Username          string     `gorm:"type:varchar(100);comment:用户名" json:"username"`
-	AccessToken       string     `gorm:"type:varchar(500);comment:访问令牌" json:"access_token"`
+	AccessToken       string     `gorm:"type:text;comment:访问令牌" json:"access_token"`
 	AccessTokenSecret string     `gorm:"type:varchar(500);comment:访问令牌密钥" json:"access_token_secret"`
 	IsActive          bool       `gorm:"default:true;comment:是否启用" json:"is_active"`
 	FollowerCount     int64      `gorm:"default:0;comment:粉丝数" json:"follower_count"`

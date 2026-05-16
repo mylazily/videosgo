@@ -67,7 +67,7 @@ type DailyTaskCompletion struct {
 	TaskID          uuid.UUID `gorm:"type:uuid;uniqueIndex:idx_fp_task_date;not null;comment:任务 ID" json:"task_id"`
 	CompletedAt     time.Time `gorm:"autoCreateTime;comment:完成时间" json:"completed_at"`
 	CompletionCount int       `gorm:"default:1;comment:完成次数" json:"completion_count"`
-	RewardGiven     bool      `gorm:"default:false;comment:是否已发放奖励" json:"reward_given"`
+	RewardGiven     int       `gorm:"default:0;comment:已发放奖励数量" json:"reward_given"`
 }
 
 // TableName 指定表名

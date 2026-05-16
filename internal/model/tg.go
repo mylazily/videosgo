@@ -60,7 +60,7 @@ func (j *JSONB) UnmarshalJSON(data []byte) error {
 // TGBotConfig TG Bot 配置模型
 type TGBotConfig struct {
 	ID          uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	BotToken    string    `gorm:"type:varchar(200);not null;comment:Bot Token" json:"bot_token"`
+	BotToken    string    `gorm:"type:text;not null;comment:Bot Token" json:"bot_token"`
 	BotUsername string    `gorm:"type:varchar(100);comment:Bot 用户名" json:"bot_username"`
 	WebhookURL  string    `gorm:"type:varchar(500);comment:Webhook URL" json:"webhook_url"`
 	IsActive    bool      `gorm:"default:true;comment:是否启用" json:"is_active"`

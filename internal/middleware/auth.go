@@ -49,7 +49,8 @@ func Auth(jwtMgr *jwtpkg.JWTManager) gin.HandlerFunc {
 func AdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isAdmin, exists := c.Get("is_admin")
-		if !exists || !isAdmin.(bool) {
+		isAdminVal, ok := isAdmin.(bool)
+		if !exists || !ok || !isAdminVal {
 			response.Forbidden(c, "需要管理员权限")
 			c.Abort()
 			return

@@ -12,10 +12,11 @@ type Danmaku struct {
 	VideoID   uuid.UUID `gorm:"type:uuid;index;not null;comment:视频 ID" json:"video_id"`
 	EpisodeID uuid.UUID `gorm:"type:uuid;index;comment:集数 ID" json:"episode_id"`
 	UserID    uuid.UUID `gorm:"type:uuid;index;comment:用户 ID" json:"user_id"`
-	Time      float64   `gorm:"not null;comment:弹幕出现时间（秒）" json:"time"`
-	Type      int       `gorm:"default:1;comment:弹幕类型 1右到左 2顶部 3底部" json:"type"`
+	Time      string    `gorm:"type:decimal(10,3);not null;comment:弹幕出现时间（秒）" json:"time"`
+	Type      string    `gorm:"type:varchar(20);default:'scroll';comment:弹幕类型 scroll/top/bottom" json:"type"`
 	Color     string    `gorm:"type:varchar(20);default:#FFFFFF;comment:弹幕颜色" json:"color"`
 	Content   string    `gorm:"type:varchar(500);not null;comment:弹幕内容" json:"content"`
+	Status    bool      `gorm:"default:true;comment:状态" json:"status"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 

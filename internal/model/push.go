@@ -9,7 +9,7 @@ import (
 // PushSubscription 推送订阅
 type PushSubscription struct {
 	ID            uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	FingerprintID string     `gorm:"type:varchar(100);index;not null;comment:设备指纹 ID" json:"fingerprint_id"`
+	FingerprintID uuid.UUID  `gorm:"type:uuid;index;not null;comment:设备指纹 ID" json:"fingerprint_id"`
 	Endpoint      string     `gorm:"type:varchar(500);not null;comment:推送端点 URL" json:"endpoint"`
 	P256DHKey     string     `gorm:"type:text;comment:P-256 DH 公钥(base64)" json:"p256dh_key"`
 	AuthKey       string     `gorm:"type:text;comment:认证密钥(base64)" json:"auth_key"`
@@ -42,7 +42,7 @@ type PushNotification struct {
 	Link           string     `gorm:"type:varchar(500);comment:点击跳转链接" json:"link"`
 	Tag            string     `gorm:"type:varchar(100);comment:通知标签" json:"tag"`
 	TargetType     string     `gorm:"type:varchar(50);default:all;comment:目标类型(all/video/tag)" json:"target_type"`
-	TargetVideoID  string     `gorm:"type:varchar(100);comment:目标视频 ID" json:"target_video_id"`
+	TargetVideoID  uuid.UUID  `gorm:"type:uuid;comment:目标视频 ID" json:"target_video_id"`
 	TotalSent      int        `gorm:"default:0;comment:总发送数" json:"total_sent"`
 	TotalClicked   int        `gorm:"default:0;comment:总点击数" json:"total_clicked"`
 	Status         string     `gorm:"type:varchar(20);default:pending;comment:状态(pending/sending/completed/failed)" json:"status"`

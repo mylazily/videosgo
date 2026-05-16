@@ -32,3 +32,11 @@ func InitRedis(cfg *config.RedisConfig) error {
 	log.Println("[数据库] Redis 连接成功")
 	return nil
 }
+
+// CloseRedis 关闭 Redis 连接
+func CloseRedis() error {
+	if RDB != nil {
+		return RDB.Close()
+	}
+	return nil
+}

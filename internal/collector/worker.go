@@ -438,11 +438,16 @@ func detectLanguage(linkText string) string {
 func (w *Worker) createEpisodes(videoID uuid.UUID, playLinks []PlayGroup, sourceID uuid.UUID) {
 	for _, pg := range playLinks {
 		for i, link := range pg.Links {
+			// Extract actual URL from link format "第1集$url"
+			actualURL := link
+			if idx := strings.Index(link, "$"); idx >= 0 {
+				actualURL = link[idx+1:]
+			}
 			episode := &model.Episode{
 				VideoID:  videoID,
 				Name:     fmt.Sprintf("%s 第%d集", pg.GroupName, i+1),
 				EpIndex:  i + 1,
-				URL:      link,
+				URL:      actualURL,
 				URLType:  "m3u8",
 				SourceID: sourceID,
 			}
@@ -487,8 +492,9 @@ func parseTags(tagsStr string) []string {
 
 // stripHTML 去除 HTML 标签
 func stripHTML(s string) string {
-	// 简单实现：去除 < 和 > 之间的内容
-	result := ""
+	// 使用 strings.Builder 提高性能
+	var result strings.Builder
+	result.Grow(len(s))
 	inTag := false
 	for _, c := range s {
 		if c == '<' {
@@ -500,8 +506,8 @@ func stripHTML(s string) string {
 			continue
 		}
 		if !inTag {
-			result += string(c)
+			result.WriteRune(c)
 		}
 	}
-	return strings.TrimSpace(result)
+	return strings.TrimSpace(result.String())
 }

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
@@ -77,8 +78,12 @@ func (r *VideoRepo) Search(keyword string, page, pageSize int) ([]model.Video, i
 	var videos []model.Video
 	var total int64
 
+	// Escape special characters to prevent SQL injection
+	keyword = strings.ReplaceAll(keyword, "%", "\\%")
+	keyword = strings.ReplaceAll(keyword, "_", "\\_")
+
 	db := r.db.Model(&model.Video{}).
-		Where("status = ? AND (title LIKE ? OR actors LIKE ? OR director LIKE ?)",
+		Where("status = ? AND (title ILIKE ? ESCAPE '\\' OR actors ILIKE ? ESCAPE '\\' OR director ILIKE ? ESCAPE '\\')",
 			"active", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 
 	db.Count(&total)

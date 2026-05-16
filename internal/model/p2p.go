@@ -8,16 +8,16 @@ import (
 
 // SignalChannel P2P 信令通道
 type SignalChannel struct {
-	ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	RoomID       string    `gorm:"type:varchar(100);index;not null;comment:房间 ID" json:"room_id"`
-	PeerID       string    `gorm:"type:varchar(100);index;not null;comment:发送方节点 ID" json:"peer_id"`
-	FingerprintID string   `gorm:"type:uuid;index;comment:设备指纹 ID" json:"fingerprint_id"`
-	SignalType   string    `gorm:"type:varchar(20);not null;comment:信令类型(offer/answer/ice)" json:"signal_type"`
-	SDPData      string    `gorm:"type:text;comment:SDP 数据" json:"sdp_data"`
-	ICECandidate string    `gorm:"type:text;comment:ICE 候选" json:"ice_candidate"`
-	TargetPeerID string    `gorm:"type:varchar(100);index;comment:目标节点 ID" json:"target_peer_id"`
-	TTL          int       `gorm:"default:300;comment:存活时间(秒)" json:"ttl"`
-	CreatedAt    time.Time `gorm:"autoCreateTime;index;comment:创建时间" json:"created_at"`
+	ID            uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	RoomID        string    `gorm:"type:varchar(100);index;not null;comment:房间 ID" json:"room_id"`
+	PeerID        string    `gorm:"type:varchar(100);index;not null;comment:发送方节点 ID" json:"peer_id"`
+	FingerprintID uuid.UUID `gorm:"type:uuid;index;comment:设备指纹 ID" json:"fingerprint_id"`
+	SignalType    string    `gorm:"type:varchar(20);not null;comment:信令类型(offer/answer/ice)" json:"signal_type"`
+	SDPData       string    `gorm:"type:text;comment:SDP 数据" json:"sdp_data"`
+	ICECandidate  string    `gorm:"type:text;comment:ICE 候选" json:"ice_candidate"`
+	TargetPeerID  string    `gorm:"type:varchar(100);index;comment:目标节点 ID" json:"target_peer_id"`
+	TTL           int       `gorm:"default:300;comment:存活时间(秒)" json:"ttl"`
+	CreatedAt     time.Time `gorm:"autoCreateTime;index;comment:创建时间" json:"created_at"`
 }
 
 // TableName 指定表名
@@ -37,11 +37,11 @@ func (s *SignalChannel) BeforeCreate() error {
 type PeerRegistry struct {
 	ID              uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	PeerID          string     `gorm:"type:varchar(100);uniqueIndex;not null;comment:节点 ID" json:"peer_id"`
-	FingerprintID   string     `gorm:"type:uuid;index;comment:设备指纹 ID" json:"fingerprint_id"`
+	FingerprintID   uuid.UUID  `gorm:"type:uuid;index;comment:设备指纹 ID" json:"fingerprint_id"`
 	IPAddress       string     `gorm:"type:varchar(50);comment:IP 地址" json:"ip_address"`
 	Region          string     `gorm:"type:varchar(50);comment:地区" json:"region"`
 	IsActive        bool       `gorm:"default:true;index;comment:是否在线" json:"is_active"`
-	CurrentVideoID  string     `gorm:"type:varchar(100);index;comment:当前观看的视频 ID" json:"current_video_id"`
+	CurrentVideoID  uuid.UUID  `gorm:"type:uuid;index;comment:当前观看的视频 ID" json:"current_video_id"`
 	BandwidthScore  int        `gorm:"default:0;comment:带宽评分" json:"bandwidth_score"`
 	LastHeartbeat   *time.Time `gorm:"comment:最后心跳时间" json:"last_heartbeat"`
 	ConnectedAt     time.Time  `gorm:"autoCreateTime;comment:连接时间" json:"connected_at"`

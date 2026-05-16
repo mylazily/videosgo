@@ -229,5 +229,8 @@ func logSecurityEvent(ip, eventType, path, ua, reason string) {
 
 // ClearWhitelistCache 清除白名单缓存
 func ClearWhitelistCache() {
-	whitelistCache = sync.Map{}
+	whitelistCache.Range(func(key, value interface{}) bool {
+		whitelistCache.Delete(key)
+		return true
+	})
 }

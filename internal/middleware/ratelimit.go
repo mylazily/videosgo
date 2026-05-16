@@ -39,22 +39,19 @@ func (rl *RateLimiter) Allow(key string) bool {
 	now := time.Now()
 	windowStart := now.Add(-rl.window)
 
-	// 过滤掉时间窗口外的请求
 	times := rl.requests[key]
-	validTimes := make([]time.Time, 0)
+	validTimes := make([]time.Time, 0, len(times))
 	for _, t := range times {
 		if t.After(windowStart) {
 			validTimes = append(validTimes, t)
 		}
 	}
 
-	// 检查是否超过限制
 	if len(validTimes) >= rl.limit {
 		rl.requests[key] = validTimes
 		return false
 	}
 
-	// 添加当前请求
 	validTimes = append(validTimes, now)
 	rl.requests[key] = validTimes
 	return true

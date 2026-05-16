@@ -11,7 +11,7 @@ type PaymentChannel struct {
 	ID          uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	ChannelName string    `gorm:"type:varchar(100);not null;comment:渠道名称" json:"channel_name"`
 	ChannelType string    `gorm:"type:varchar(50);not null;comment:渠道类型 alipay/wechat/crypto" json:"channel_type"`
-	Config      JSONB     `gorm:"type:jsonb;comment:渠道配置" json:"config"`
+	Config      JSONB     `gorm:"type:jsonb;comment:渠道配置" json:"-"`
 	IsActive    bool      `gorm:"default:true;comment:是否启用" json:"is_active"`
 	MinAmount   float64   `gorm:"default:0.01;comment:最小金额" json:"min_amount"`
 	MaxAmount   float64   `gorm:"default:99999;comment:最大金额" json:"max_amount"`

@@ -32,11 +32,13 @@ func main() {
 	if err := database.InitPostgres(&cfg.Database); err != nil {
 		log.Fatalf("[启动] PostgreSQL 初始化失败: %v", err)
 	}
+	defer database.ClosePostgres()
 
 	// 3. 初始化 Redis
 	if err := database.InitRedis(&cfg.Redis); err != nil {
 		log.Printf("[启动] Redis 初始化失败（将降级运行）: %v", err)
 	}
+	defer database.CloseRedis()
 
 	// 4. 初始化 JWT 管理器
 	jwtMgr := jwtpkg.NewJWTManager(cfg.JWT.Secret, cfg.JWT.ExpireHours)
