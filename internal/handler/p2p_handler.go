@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/google/uuid"
 	"github.com/gin-gonic/gin"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/service"
@@ -35,11 +36,11 @@ func (h *P2PHandler) RegisterPeer(c *gin.Context) {
 
 	peer := &model.PeerRegistry{
 		PeerID:         req.PeerID,
-		FingerprintID:  req.FingerprintID,
+		FingerprintID: uuid.MustParse(req.FingerprintID),
 		IPAddress:      req.IPAddress,
 		Region:         req.Region,
 		IsActive:       true,
-		CurrentVideoID: req.VideoID,
+		CurrentVideoID: uuid.MustParse(req.VideoID),
 		BandwidthScore: req.BandwidthScore,
 	}
 
