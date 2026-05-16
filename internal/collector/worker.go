@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"strconv"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -169,11 +170,11 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 		video := &model.Video{
 			Title:       normalTitle,
 			SubTitle:    item.VodSub,
-			Cover:       item.VodPic,
+			CoverURL: item.VodPic,
 			Description: stripHTML(item.VodContent),
-			CategoryID:  item.TypeID,
 			Category:    item.TypeName,
-			Year:        item.VodYear,
+			// Year: 由 VodYear 字符串转换
+				Year: parseYear(item.VodYear),
 			Area:        item.VodArea,
 			Director:    item.VodDirector,
 			Actors:      item.VodActor,
@@ -446,7 +447,6 @@ func (w *Worker) createEpisodes(videoID uuid.UUID, playLinks []PlayGroup, source
 			episode := &model.Episode{
 				VideoID:  videoID,
 				Name:     fmt.Sprintf("%s 第%d集", pg.GroupName, i+1),
-				EpIndex:  i + 1,
 				URL:      actualURL,
 				URLType:  "m3u8",
 				SourceID: sourceID,
@@ -510,4 +510,16 @@ func stripHTML(s string) string {
 		}
 	}
 	return strings.TrimSpace(result.String())
+}
+
+// parseYear 解析年份字符串为 int16
+func parseYear(s string) int16 {
+	if s == "" || s == "0" {
+		return 0
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 || n > 9999 {
+		return 0
+	}
+	return int16(n)
 }
