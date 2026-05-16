@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strconv"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -26,11 +27,12 @@ func (s *DanmakuService) CreateDanmaku(danmaku *model.Danmaku) error {
 	if danmaku.VideoID == uuid.Nil {
 		return fmt.Errorf("视频 ID 不能为空")
 	}
-	if danmaku.Time < 0 {
+	if danmaku.Time == "" || danmaku.Time == "0" {
 		return fmt.Errorf("弹幕时间不能为负数")
 	}
-	if danmaku.Type < 1 || danmaku.Type > 3 {
-		danmaku.Type = 1 // 默认右到左
+	typeNum, _ := strconv.Atoi(danmaku.Type)
+		if typeNum < 1 || typeNum > 3 {
+		danmaku.Type = "1" // 默认右到左
 	}
 	if danmaku.Color == "" {
 		danmaku.Color = "#FFFFFF"
