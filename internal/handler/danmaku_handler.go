@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
@@ -57,8 +58,8 @@ func (h *DanmakuHandler) CreateDanmaku(c *gin.Context) {
 		VideoID:   parsedVideoID,
 		EpisodeID: parsedEpisodeID,
 		UserID:    parsedUserID,
-		Time:      req.Time,
-		Type:      req.Type,
+		Time: fmt.Sprintf("%.0f", req.Time),
+		Type: fmt.Sprintf("%d", req.Type),
 		Color:     req.Color,
 		Content:   req.Content,
 	}
