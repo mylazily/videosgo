@@ -187,18 +187,44 @@ func (h *VideoHandler) GetLatest(c *gin.Context) {
 // GetHot 获取热门视频
 // GET /api/v1/videos/hot
 func (h *VideoHandler) GetHot(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	if limit < 1 || limit > 50 {
-		limit = 10
+	// 支持两种分页方式：limit 或 page/page_size
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "0"))
+
+	// 优先使用 limit（兼容旧版）
+	if limit > 0 {
+		if limit > 50 {
+			limit = 50
+		}
+		videos, err := h.svc.GetHot(limit)
+		if err != nil {
+			response.InternalError(c, "获取热门视频失败")
+			return
+		}
+		response.Success(c, videos)
+		return
 	}
 
-	videos, err := h.svc.GetHot(limit)
+	// 使用 page/page_size
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 50 {
+		pageSize = 10
+	}
+
+	videos, total, err := h.svc.GetHotPaged(page, pageSize)
 	if err != nil {
 		response.InternalError(c, "获取热门视频失败")
 		return
 	}
 
-	response.Success(c, videos)
+	response.Success(c, gin.H{
+		"list":  videos,
+		"total": total,
+		"page":  page,
+	})
 }
 
 // GetEpisodes 获取视频剧集

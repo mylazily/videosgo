@@ -42,6 +42,8 @@ func Setup(
 	adRewardH *handler.AdRewardHandler,
 	// 资源站监控
 	stationH *handler.StationHandler,
+	// 图片代理
+	imageProxyH *handler.ImageProxyHandler,
 	// UA 分流中间件回调
 	redirectFn func(domain, path, ua, ip string) (targetURL string, found bool),
 ) *gin.Engine {
@@ -90,6 +92,10 @@ func Setup(
 		api.GET("/categories", videoH.GetCategories)
 		api.GET("/search", videoH.SearchVideos)
 		api.GET("/search/hot", videoH.GetSearchHot)
+
+		// 图片代理（让CF缓存外链图片）
+		api.GET("/image/proxy", imageProxyH.ProxyImage)
+		api.GET("/image/proxy/:cache_key", imageProxyH.ProxyImageWithCache)
 
 		// 标签
 		api.GET("/tags", tagH.ListTags)

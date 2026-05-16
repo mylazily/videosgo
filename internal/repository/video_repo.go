@@ -140,6 +140,26 @@ func (r *VideoRepo) GetHot(limit int) ([]model.Video, error) {
 	return videos, err
 }
 
+// GetHotPaged 分页获取热门视频
+func (r *VideoRepo) GetHotPaged(page, pageSize int) ([]model.Video, int64, error) {
+	var videos []model.Video
+	var total int64
+
+	offset := (page - 1) * pageSize
+
+	err := r.db.Model(&model.Video{}).Where("status = ?", "active").Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = r.db.Where("status = ?", "active").
+		Order("view_count DESC").
+		Offset(offset).Limit(pageSize).
+		Find(&videos).Error
+
+	return videos, total, err
+}
+
 // GetByCategory 根据分类获取视频
 func (r *VideoRepo) GetByCategory(category string, page, pageSize int) ([]model.Video, int64, error) {
 	return r.List(page, pageSize, category)

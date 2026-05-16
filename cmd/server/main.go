@@ -139,6 +139,7 @@ func main() {
 	domainHandler := handler.NewDomainHandler(domainRotationSvc)
 	adRewardHandler := handler.NewAdRewardHandler(adRewardSvc)
 	stationHandler := handler.NewStationHandler(stationMonitor)
+	imageProxyHandler := handler.NewImageProxyHandler()
 
 	// 10. 初始化路由（传入 UA 分流所需的 301 匹配函数）
 	redirectFn := func(domain, path, ua, ip string) (targetURL string, found bool) {
@@ -155,7 +156,7 @@ func main() {
 		shareHandler, sitemapHandler, siteHandler, p2pHandler,
 		pushHandler, redirectHandler, tgHandler, xHandler,
 		paymentHandler, wsHandler, domainHandler, adRewardHandler,
-		stationHandler,
+		stationHandler, imageProxyHandler,
 		redirectFn)
 
 	// 10. 启动采集调度器

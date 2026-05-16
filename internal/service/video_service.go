@@ -170,6 +170,11 @@ func (s *VideoService) GetHot(limit int) ([]model.Video, error) {
 	return s.repo.GetHot(limit)
 }
 
+// GetHotPaged 分页获取热门视频
+func (s *VideoService) GetHotPaged(page, pageSize int) ([]model.Video, int64, error) {
+	return s.repo.GetHotPaged(page, pageSize)
+}
+
 // GetEpisodes 获取视频剧集
 func (s *VideoService) GetEpisodes(videoID string) ([]model.Episode, error) {
 	parsedID, err := uuid.Parse(videoID)
