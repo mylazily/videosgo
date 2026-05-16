@@ -1,0 +1,31 @@
+[Unit]
+Description=XVideos Go Backend
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/videosgo
+ExecStart=/opt/videosgo/bin/videosgo
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# 资源限制（Oracle ARM 4核24G）
+LimitNOFILE=65535
+LimitNPROC=65535
+
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/videosgo/data /opt/videosgo/logs
+PrivateTmp=true
+
+# 环境变量
+EnvironmentFile=/opt/videosgo/config/.env
+
+[Install]
+WantedBy=multi-user.target
