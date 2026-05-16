@@ -17,8 +17,8 @@ RUN go mod download
 # 复制源代码
 COPY . .
 
-# 构建，静态链接，arm64
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o /app/server ./cmd/server
+# 构建，静态链接（GOOS/GOARCH 由 Buildx --platform 自动设置）
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/server ./cmd/server
 
 # ---- 运行阶段 ----
 FROM alpine:3.20
