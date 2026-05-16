@@ -17,7 +17,6 @@ var botKeywords = []string{
 	"bingbot",
 	"YandexBot",
 	"DuckDuckBot",
-	"Baiduspider",
 	"Sogou",
 	"360Spider",
 	"Bytespider",   // 字节跳动

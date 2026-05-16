@@ -190,27 +190,35 @@ func isWhitelisted(path string, whitelist map[string]bool) bool {
 
 // setSecurityHeaders 设置安全响应头
 func setSecurityHeaders(c *gin.Context) {
+	path := c.Request.URL.Path
+
 	// 防止 MIME 类型嗅探
 	c.Header("X-Content-Type-Options", "nosniff")
-	
+
 	// 防止点击劫持
 	c.Header("X-Frame-Options", "DENY")
-	
+
 	// XSS 保护
 	c.Header("X-XSS-Protection", "1; mode=block")
-	
+
 	// 引用策略
 	c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
-	
-	// 内容安全策略
-	c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'")
-	
+
+	// 内容安全策略（允许内联 JSON-LD 用于 SEO）
+	c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: wss:; frame-ancestors 'none'")
+
 	// HSTS (仅在 HTTPS 环境下启用)
 	// c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-	
-	// 禁用缓存敏感信息
-	c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
-	c.Header("Pragma", "no-cache")
+
+	// 缓存策略：区分 API 和静态资源
+	if strings.HasPrefix(path, "/api/") {
+		// API 响应：不缓存
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
+		c.Header("Pragma", "no-cache")
+	} else {
+		// 静态资源和页面：允许浏览器缓存
+		c.Header("Cache-Control", "public, max-age=3600")
+	}
 }
 
 // logSecurityEvent 记录安全事件

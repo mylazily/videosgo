@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/mylazily/videosgo/internal/database"
 	"github.com/mylazily/videosgo/internal/model"
 )
@@ -211,7 +213,7 @@ func (s *SitemapService) GenerateActorSitemap() (string, error) {
 
 	// 从视频中提取不重复的演员
 	type ActorResult struct {
-		Actor     string
+		Actors    string
 		UpdatedAt time.Time
 	}
 	var actors []ActorResult
@@ -230,7 +232,7 @@ func (s *SitemapService) GenerateActorSitemap() (string, error) {
 	}
 
 	for _, a := range actors {
-		actorList := strings.Split(a.Actor, ",")
+		actorList := strings.Split(a.Actors, ",")
 		for _, actor := range actorList {
 			actor = strings.TrimSpace(actor)
 			if actor == "" || seen[actor] {
