@@ -42,17 +42,22 @@ func (r *DomainRotationRepo) GetActiveDomain(region string) (*model.ActiveDomain
 	return &domain, nil
 }
 
-// SetActiveDomain 设置活跃域名
+// SetActiveDomain 设置活跃域名（使用事务确保原子性）
 func (r *DomainRotationRepo) SetActiveDomain(domain, region, activatedBy string) error {
-	// 先停用所有活跃域名
-	r.db.Model(&model.ActiveDomain{}).Where("1 = 1").Delete(&model.ActiveDomain{})
-	// 创建新的活跃域名
-	active := &model.ActiveDomain{
-		Domain:      domain,
-		Region:      region,
-		ActivatedBy: activatedBy,
-	}
-	return r.db.Create(active).Error
+	// 使用事务确保删除和创建的原子性
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 先停用所有活跃域名
+		if err := tx.Where("1 = 1").Delete(&model.ActiveDomain{}).Error; err != nil {
+			return err
+		}
+		// 创建新的活跃域名
+		active := &model.ActiveDomain{
+			Domain:      domain,
+			Region:      region,
+			ActivatedBy: activatedBy,
+		}
+		return tx.Create(active).Error
+	})
 }
 
 // LogSwitch 记录域名切换事件

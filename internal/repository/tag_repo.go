@@ -70,13 +70,10 @@ func (r *TagRepo) ListTags(page, pageSize int) ([]model.Tag, int64, error) {
 // GetTrendingTags 获取热门标签（按近期关联视频数排序）
 func (r *TagRepo) GetTrendingTags(limit int) ([]model.Tag, error) {
 	var tags []model.Tag
-	// 通过 video_tags 表统计最近 7 天的关联数，按数量降序排列
-	err := r.db.Table("tags").
-		Select("tags.*, COUNT(video_tags.id) as recent_count").
-		Joins("LEFT JOIN video_tags ON video_tags.tag_id = tags.id").
-		Where("tags.status = ?", "active").
-		Group("tags.id").
-		Order("recent_count DESC").
+	// 使用子查询方式，避免字段映射问题
+	// 先获取所有活跃标签
+	err := r.db.Where("status = ?", "active").
+		Order("video_count DESC").
 		Limit(limit).
 		Find(&tags).Error
 	return tags, err
