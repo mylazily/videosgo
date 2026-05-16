@@ -55,11 +55,11 @@ func Setup(
 	r.Use(middleware.RequestID())
 	r.Use(middleware.Logging())
 	r.Use(middleware.CORS(cfg.Security.CORSOrigins()))
-	r.Use(middleware.Security(
-		cfg.Security.UAFilterEnabled,
-		cfg.Security.UAWhitelist(),
-		cfg.Security.WAFEnabled,
-	))
+		r.Use(middleware.Security(&middleware.SecurityConfig{
+			UAFilterEnabled: cfg.Security.UAFilterEnabled,
+			WAFEnabled:     cfg.Security.WAFEnabled,
+			WhitelistPaths:  cfg.Security.UAWhitelist(),
+		}))
 
 	// 限流中间件
 	limiter := middleware.NewRateLimiter(cfg.Security.RateLimitPerMinute, time.Minute)
