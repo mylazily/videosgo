@@ -157,7 +157,7 @@ func (r *VideoRepo) UpsertByTitle(video *model.Video) error {
 	}
 	// 更新已有视频
 	return r.db.Model(&existing).Updates(map[string]interface{}{
-		"cover":       video.Cover,
+		"cover":       video.CoverURL,
 		"description": video.Description,
 		"category":    video.Category,
 		"year":        video.Year,
@@ -180,7 +180,7 @@ func (r *VideoRepo) CreateEpisode(episode *model.Episode) error {
 func (r *VideoRepo) GetEpisodesByVideoID(videoID uuid.UUID) ([]model.Episode, error) {
 	var episodes []model.Episode
 	err := r.db.Where("video_id = ?", videoID).
-		Order("ep_index ASC").
+		Order("number ASC").
 		Find(&episodes).Error
 	return episodes, err
 }
