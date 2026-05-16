@@ -1,6 +1,9 @@
 package service
 
 import (
+	"fmt"
+
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
 )
@@ -36,6 +39,10 @@ func (s *RankService) GetCategoryRank(category, rankType string, limit int) ([]m
 }
 
 // IncrementScore 增加视频热度
-func (s *RankService) IncrementScore(videoID uint, score int) error {
-	return s.repo.IncrementScore(videoID, score)
+func (s *RankService) IncrementScore(videoID string, score int) error {
+	parsedID, err := uuid.Parse(videoID)
+	if err != nil {
+		return fmt.Errorf("invalid UUID: %s", videoID)
+	}
+	return s.repo.IncrementScore(parsedID, score)
 }

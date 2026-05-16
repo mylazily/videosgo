@@ -1,43 +1,10 @@
 package model
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-// JSONB 通用 JSONB 类型
-type JSONB map[string]interface{}
-
-// Scan 实现 sql.Scanner 接口
-func (j *JSONB) Scan(value interface{}) error {
-	if value == nil {
-		*j = nil
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		return json.Unmarshal([]byte(v), j)
-	case []byte:
-		return json.Unmarshal(v, j)
-	}
-	return fmt.Errorf("无法扫描 JSONB: %v", value)
-}
-
-// Value 实现 driver.Valuer 接口
-func (j JSONB) Value() (driver.Value, error) {
-	if j == nil {
-		return "{}", nil
-	}
-	data, err := json.Marshal(j)
-	if err != nil {
-		return nil, err
-	}
-	return string(data), nil
-}
 
 // RedirectRule 301 重定向规则
 type RedirectRule struct {

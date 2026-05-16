@@ -87,9 +87,9 @@ func main() {
 	sitemapSvc := service.NewSitemapService(database.DB)
 	siteSvc := service.NewSiteService(siteRepo)
 	p2pSvc := service.NewP2PService(p2pRepo)
-	pushSvc := service.NewPushService(pushRepo)
+	pushSvc := service.NewPushService(pushRepo, "")
 	redirectSvc := service.NewRedirectService(redirectRepo)
-	gscSvc := service.NewGSCService(siteRepo)
+	gscSvc := service.NewGSCService(siteRepo, "", "")
 	tgSvc := service.NewTGService(tgRepo)
 	xSvc := service.NewXService(xRepo)
 	paymentSvc := service.NewPaymentService(paymentRepo)
@@ -135,12 +135,12 @@ func main() {
 	stationHandler := handler.NewStationHandler(stationMonitor)
 
 	// 10. 初始化路由（传入 UA 分流所需的 301 匹配函数）
-	redirectFn := func(domain, path, ua string) (targetURL, ruleType string, ok bool) {
-		rule := redirectSvc.MatchRule(domain, path, ua)
-		if rule != nil {
-			return rule.TargetURL, rule.RuleType, true
+	redirectFn := func(domain, path, ua, ip string) (targetURL string, found bool) {
+		rule, err := redirectSvc.MatchAndRedirect(domain, path, ua, ip)
+		if err != nil || rule == nil {
+			return "", false
 		}
-		return "", "", false
+		return rule.TargetURL, true
 	}
 
 	r := router.Setup(cfg, jwtMgr, healthHandler, videoHandler, userHandler,

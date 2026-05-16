@@ -10,7 +10,7 @@ import (
 
 // Claims 自定义 JWT 载荷
 type Claims struct {
-	UserID   uint   `json:"user_id"`
+	UserID   string `json:"user_id"`
 	Username string `json:"username"`
 	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
@@ -33,7 +33,7 @@ func NewJWTManager(secretKey string, expireHours int) *JWTManager {
 }
 
 // GenerateToken 生成访问令牌
-func (m *JWTManager) GenerateToken(userID uint, username string, isAdmin bool) (string, error) {
+func (m *JWTManager) GenerateToken(userID string, username string, isAdmin bool) (string, error) {
 	claims := &Claims{
 		UserID:   userID,
 		Username: username,
@@ -55,7 +55,7 @@ func (m *JWTManager) GenerateToken(userID uint, username string, isAdmin bool) (
 }
 
 // GenerateRefreshToken 生成刷新令牌
-func (m *JWTManager) GenerateRefreshToken(userID uint, username string, isAdmin bool) (string, error) {
+func (m *JWTManager) GenerateRefreshToken(userID string, username string, isAdmin bool) (string, error) {
 	claims := &Claims{
 		UserID:   userID,
 		Username: username,

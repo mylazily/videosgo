@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/service"
 	"github.com/mylazily/videosgo/pkg/response"
@@ -40,7 +41,8 @@ func (h *CollectHandler) CreateSource(c *gin.Context) {
 // UpdateSource 更新采集源
 // PUT /api/v1/admin/collect/sources/:id
 func (h *CollectHandler) UpdateSource(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	idStr := c.Param("id")
+	parsedID, err := uuid.Parse(idStr)
 	if err != nil {
 		response.BadRequest(c, "无效的 ID")
 		return
@@ -51,7 +53,7 @@ func (h *CollectHandler) UpdateSource(c *gin.Context) {
 		response.BadRequest(c, "参数错误: "+err.Error())
 		return
 	}
-	source.ID = uint(id)
+	source.ID = parsedID
 
 	if err := h.svc.UpdateSource(&source); err != nil {
 		response.BadRequest(c, err.Error())
@@ -64,13 +66,9 @@ func (h *CollectHandler) UpdateSource(c *gin.Context) {
 // DeleteSource 删除采集源
 // DELETE /api/v1/admin/collect/sources/:id
 func (h *CollectHandler) DeleteSource(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "无效的 ID")
-		return
-	}
+	id := c.Param("id")
 
-	if err := h.svc.DeleteSource(uint(id)); err != nil {
+	if err := h.svc.DeleteSource(id); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
@@ -81,13 +79,9 @@ func (h *CollectHandler) DeleteSource(c *gin.Context) {
 // GetSource 获取采集源详情
 // GET /api/v1/admin/collect/sources/:id
 func (h *CollectHandler) GetSource(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "无效的 ID")
-		return
-	}
+	id := c.Param("id")
 
-	source, err := h.svc.GetSource(uint(id))
+	source, err := h.svc.GetSource(id)
 	if err != nil {
 		response.NotFound(c, "采集源不存在")
 		return
@@ -121,15 +115,11 @@ func (h *CollectHandler) ListSources(c *gin.Context) {
 // TriggerCollect 触发采集
 // POST /api/v1/admin/collect/sources/:id/trigger
 func (h *CollectHandler) TriggerCollect(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "无效的 ID")
-		return
-	}
+	id := c.Param("id")
 
 	collectType := c.DefaultQuery("type", "full")
 
-	if err := h.svc.TriggerCollect(uint(id), collectType); err != nil {
+	if err := h.svc.TriggerCollect(id, collectType); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}

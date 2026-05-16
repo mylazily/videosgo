@@ -1,9 +1,8 @@
 package handler
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/service"
 	"github.com/mylazily/videosgo/pkg/response"
@@ -22,13 +21,15 @@ func NewDanmakuHandler(svc *service.DanmakuService) *DanmakuHandler {
 // CreateDanmaku 创建弹幕
 // POST /api/v1/videos/:id/episodes/:ep_id/danmaku
 func (h *DanmakuHandler) CreateDanmaku(c *gin.Context) {
-	videoID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	videoIDStr := c.Param("id")
+	parsedVideoID, err := uuid.Parse(videoIDStr)
 	if err != nil {
 		response.BadRequest(c, "无效的视频 ID")
 		return
 	}
 
-	episodeID, err := strconv.ParseUint(c.Param("ep_id"), 10, 64)
+	episodeIDStr := c.Param("ep_id")
+	parsedEpisodeID, err := uuid.Parse(episodeIDStr)
 	if err != nil {
 		response.BadRequest(c, "无效的剧集 ID")
 		return
@@ -46,11 +47,16 @@ func (h *DanmakuHandler) CreateDanmaku(c *gin.Context) {
 	}
 
 	userID, _ := c.Get("user_id")
+	parsedUserID, err := uuid.Parse(userID.(string))
+	if err != nil {
+		response.BadRequest(c, "无效的用户 ID")
+		return
+	}
 
 	danmaku := &model.Danmaku{
-		VideoID:   uint(videoID),
-		EpisodeID: uint(episodeID),
-		UserID:    userID.(uint),
+		VideoID:   parsedVideoID,
+		EpisodeID: parsedEpisodeID,
+		UserID:    parsedUserID,
 		Time:      req.Time,
 		Type:      req.Type,
 		Color:     req.Color,
@@ -68,13 +74,14 @@ func (h *DanmakuHandler) CreateDanmaku(c *gin.Context) {
 // GetDanmakus 获取剧集弹幕
 // GET /api/v1/videos/:id/episodes/:ep_id/danmaku
 func (h *DanmakuHandler) GetDanmakus(c *gin.Context) {
-	episodeID, err := strconv.ParseUint(c.Param("ep_id"), 10, 64)
+	episodeIDStr := c.Param("ep_id")
+	parsedEpisodeID, err := uuid.Parse(episodeIDStr)
 	if err != nil {
 		response.BadRequest(c, "无效的剧集 ID")
 		return
 	}
 
-	danmakus, err := h.svc.GetDanmakusByEpisode(uint(episodeID))
+	danmakus, err := h.svc.GetDanmakusByEpisode(parsedEpisodeID)
 	if err != nil {
 		response.InternalError(c, "获取弹幕失败")
 		return
@@ -86,13 +93,14 @@ func (h *DanmakuHandler) GetDanmakus(c *gin.Context) {
 // GetVideoDanmakus 获取视频所有弹幕
 // GET /api/v1/videos/:id/danmaku
 func (h *DanmakuHandler) GetVideoDanmakus(c *gin.Context) {
-	videoID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	videoIDStr := c.Param("id")
+	parsedVideoID, err := uuid.Parse(videoIDStr)
 	if err != nil {
 		response.BadRequest(c, "无效的视频 ID")
 		return
 	}
 
-	danmakus, err := h.svc.GetDanmakusByVideo(uint(videoID))
+	danmakus, err := h.svc.GetDanmakusByVideo(parsedVideoID)
 	if err != nil {
 		response.InternalError(c, "获取弹幕失败")
 		return

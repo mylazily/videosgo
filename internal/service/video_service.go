@@ -171,20 +171,33 @@ func (s *VideoService) GetHot(limit int) ([]model.Video, error) {
 }
 
 // GetEpisodes 获取视频剧集
-func (s *VideoService) GetEpisodes(videoID uint) ([]model.Episode, error) {
-	return s.repo.GetEpisodesByVideoID(videoID)
+func (s *VideoService) GetEpisodes(videoID string) ([]model.Episode, error) {
+	parsedID, err := uuid.Parse(videoID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID: %s", videoID)
+	}
+	return s.repo.GetEpisodesByVideoID(parsedID)
 }
 
 // RecordWatch 记录观看历史和增加播放量
-func (s *VideoService) RecordWatch(userID, videoID uint, progress, duration float64) error {
+func (s *VideoService) RecordWatch(userID, videoID string, progress, duration float64) error {
+	parsedVideoID, err := uuid.Parse(videoID)
+	if err != nil {
+		return fmt.Errorf("invalid UUID: %s", videoID)
+	}
+
 	// 增加播放量
-	_ = s.repo.IncrementViewCount(videoID)
+	_ = s.repo.IncrementViewCount(parsedVideoID)
 
 	// 保存观看历史
-	if userID > 0 {
+	if userID != "" {
+		parsedUserID, err := uuid.Parse(userID)
+		if err != nil {
+			return fmt.Errorf("invalid UUID: %s", userID)
+		}
 		history := &model.UserWatchHistory{
-			UserID:   userID,
-			VideoID:  videoID,
+			UserID:   parsedUserID,
+			VideoID:  parsedVideoID,
 			Progress: progress,
 			Duration: duration,
 		}
@@ -194,8 +207,12 @@ func (s *VideoService) RecordWatch(userID, videoID uint, progress, duration floa
 }
 
 // GetWatchHistory 获取观看历史
-func (s *VideoService) GetWatchHistory(userID uint, page, pageSize int) ([]model.UserWatchHistory, int64, error) {
-	return s.repo.GetWatchHistory(userID, page, pageSize)
+func (s *VideoService) GetWatchHistory(userID string, page, pageSize int) ([]model.UserWatchHistory, int64, error) {
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("invalid UUID: %s", userID)
+	}
+	return s.repo.GetWatchHistory(parsedID, page, pageSize)
 }
 
 // GetSearchHot 获取热搜列表（使用 Redis ZSET）

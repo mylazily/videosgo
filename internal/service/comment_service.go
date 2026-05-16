@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
 )
@@ -22,14 +23,14 @@ func (s *CommentService) CreateComment(comment *model.Comment) error {
 	if comment.Content == "" {
 		return fmt.Errorf("评论内容不能为空")
 	}
-	if comment.VideoID == 0 {
+	if comment.VideoID == uuid.Nil {
 		return fmt.Errorf("视频 ID 不能为空")
 	}
 	return s.repo.Create(comment)
 }
 
 // DeleteComment 删除评论
-func (s *CommentService) DeleteComment(id, userID uint, isAdmin bool) error {
+func (s *CommentService) DeleteComment(id, userID uuid.UUID, isAdmin bool) error {
 	comment, err := s.repo.GetByID(id)
 	if err != nil {
 		return fmt.Errorf("评论不存在")
@@ -42,22 +43,22 @@ func (s *CommentService) DeleteComment(id, userID uint, isAdmin bool) error {
 }
 
 // GetComment 获取评论详情
-func (s *CommentService) GetComment(id uint) (*model.Comment, error) {
+func (s *CommentService) GetComment(id uuid.UUID) (*model.Comment, error) {
 	return s.repo.GetByID(id)
 }
 
 // ListComments 获取视频评论列表
-func (s *CommentService) ListComments(videoID uint, page, pageSize int) ([]model.Comment, int64, error) {
+func (s *CommentService) ListComments(videoID uuid.UUID, page, pageSize int) ([]model.Comment, int64, error) {
 	return s.repo.ListByVideoID(videoID, page, pageSize)
 }
 
 // ListReplies 获取回复列表
-func (s *CommentService) ListReplies(parentID uint) ([]model.Comment, error) {
+func (s *CommentService) ListReplies(parentID uuid.UUID) ([]model.Comment, error) {
 	return s.repo.ListReplies(parentID)
 }
 
 // LikeComment 点赞评论
-func (s *CommentService) LikeComment(commentID, userID uint) error {
+func (s *CommentService) LikeComment(commentID, userID uuid.UUID) error {
 	// 检查是否已点赞
 	liked, err := s.repo.IsLiked(commentID, userID)
 	if err != nil {
@@ -80,7 +81,7 @@ func (s *CommentService) LikeComment(commentID, userID uint) error {
 }
 
 // UnlikeComment 取消点赞
-func (s *CommentService) UnlikeComment(commentID, userID uint) error {
+func (s *CommentService) UnlikeComment(commentID, userID uuid.UUID) error {
 	// 检查是否已点赞
 	liked, err := s.repo.IsLiked(commentID, userID)
 	if err != nil {
@@ -100,6 +101,6 @@ func (s *CommentService) UnlikeComment(commentID, userID uint) error {
 }
 
 // GetCommentCount 获取视频评论数
-func (s *CommentService) GetCommentCount(videoID uint) (int64, error) {
+func (s *CommentService) GetCommentCount(videoID uuid.UUID) (int64, error) {
 	return s.repo.GetCountByVideoID(videoID)
 }

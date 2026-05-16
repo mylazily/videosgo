@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
 )
@@ -22,7 +23,7 @@ func (s *DanmakuService) CreateDanmaku(danmaku *model.Danmaku) error {
 	if danmaku.Content == "" {
 		return fmt.Errorf("弹幕内容不能为空")
 	}
-	if danmaku.VideoID == 0 {
+	if danmaku.VideoID == uuid.Nil {
 		return fmt.Errorf("视频 ID 不能为空")
 	}
 	if danmaku.Time < 0 {
@@ -38,21 +39,21 @@ func (s *DanmakuService) CreateDanmaku(danmaku *model.Danmaku) error {
 }
 
 // GetDanmakusByEpisode 获取剧集弹幕
-func (s *DanmakuService) GetDanmakusByEpisode(episodeID uint) ([]model.Danmaku, error) {
+func (s *DanmakuService) GetDanmakusByEpisode(episodeID uuid.UUID) ([]model.Danmaku, error) {
 	return s.repo.ListByEpisodeID(episodeID)
 }
 
 // GetDanmakusByVideo 获取视频所有弹幕
-func (s *DanmakuService) GetDanmakusByVideo(videoID uint) ([]model.Danmaku, error) {
+func (s *DanmakuService) GetDanmakusByVideo(videoID uuid.UUID) ([]model.Danmaku, error) {
 	return s.repo.ListByVideoID(videoID)
 }
 
 // DeleteDanmakusByEpisode 删除剧集弹幕
-func (s *DanmakuService) DeleteDanmakusByEpisode(episodeID uint) error {
+func (s *DanmakuService) DeleteDanmakusByEpisode(episodeID uuid.UUID) error {
 	return s.repo.DeleteByEpisodeID(episodeID)
 }
 
 // GetDanmakuCount 获取视频弹幕数
-func (s *DanmakuService) GetDanmakuCount(videoID uint) (int64, error) {
+func (s *DanmakuService) GetDanmakuCount(videoID uuid.UUID) (int64, error) {
 	return s.repo.GetCountByVideoID(videoID)
 }

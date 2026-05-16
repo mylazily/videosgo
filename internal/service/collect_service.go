@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/collector"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
@@ -51,13 +52,21 @@ func (s *CollectService) UpdateSource(source *model.CollectSource) error {
 }
 
 // DeleteSource 删除采集源
-func (s *CollectService) DeleteSource(id uint) error {
-	return s.repo.Delete(id)
+func (s *CollectService) DeleteSource(id string) error {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("invalid UUID: %s", id)
+	}
+	return s.repo.Delete(parsedID)
 }
 
 // GetSource 获取采集源详情
-func (s *CollectService) GetSource(id uint) (*model.CollectSource, error) {
-	return s.repo.GetByID(id)
+func (s *CollectService) GetSource(id string) (*model.CollectSource, error) {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID: %s", id)
+	}
+	return s.repo.GetByID(parsedID)
 }
 
 // ListSources 获取采集源列表
@@ -66,8 +75,12 @@ func (s *CollectService) ListSources(page, pageSize int) ([]model.CollectSource,
 }
 
 // TriggerCollect 手动触发采集
-func (s *CollectService) TriggerCollect(sourceID uint, collectType string) error {
-	source, err := s.repo.GetByID(sourceID)
+func (s *CollectService) TriggerCollect(sourceID string, collectType string) error {
+	parsedID, err := uuid.Parse(sourceID)
+	if err != nil {
+		return fmt.Errorf("invalid UUID: %s", sourceID)
+	}
+	source, err := s.repo.GetByID(parsedID)
 	if err != nil {
 		return fmt.Errorf("采集源不存在")
 	}
@@ -107,7 +120,7 @@ func (s *CollectService) TriggerCollect(sourceID uint, collectType string) error
 		}
 
 		_ = s.repo.UpdateLog(collectLog)
-		_ = s.repo.UpdateLastCollect(sourceID)
+		_ = s.repo.UpdateLastCollect(parsedID)
 	}()
 
 	return nil

@@ -204,13 +204,9 @@ func (h *VideoHandler) GetHot(c *gin.Context) {
 // GetEpisodes 获取视频剧集
 // GET /api/v1/videos/:id/episodes
 func (h *VideoHandler) GetEpisodes(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "无效的视频 ID")
-		return
-	}
+	id := c.Param("id")
 
-	episodes, err := h.svc.GetEpisodes(uint(id))
+	episodes, err := h.svc.GetEpisodes(id)
 	if err != nil {
 		response.InternalError(c, "获取剧集失败")
 		return
@@ -222,11 +218,7 @@ func (h *VideoHandler) GetEpisodes(c *gin.Context) {
 // RecordWatch 记录观看
 // POST /api/v1/videos/:id/watch
 func (h *VideoHandler) RecordWatch(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "无效的视频 ID")
-		return
-	}
+	id := c.Param("id")
 
 	var req struct {
 		Progress float64 `json:"progress"`
@@ -235,9 +227,9 @@ func (h *VideoHandler) RecordWatch(c *gin.Context) {
 	_ = c.ShouldBindJSON(&req)
 
 	userID, _ := c.Get("user_id")
-	uid, _ := userID.(uint)
+	uid, _ := userID.(string)
 
-	if err := h.svc.RecordWatch(uid, uint(id), req.Progress, req.Duration); err != nil {
+	if err := h.svc.RecordWatch(uid, id, req.Progress, req.Duration); err != nil {
 		response.InternalError(c, "记录观看失败")
 		return
 	}
@@ -260,7 +252,7 @@ func (h *VideoHandler) GetWatchHistory(c *gin.Context) {
 		pageSize = 20
 	}
 
-	histories, total, err := h.svc.GetWatchHistory(userID.(uint), page, pageSize)
+	histories, total, err := h.svc.GetWatchHistory(userID.(string), page, pageSize)
 	if err != nil {
 		response.InternalError(c, "获取观看历史失败")
 		return

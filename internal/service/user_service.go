@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/model"
 	"github.com/mylazily/videosgo/internal/repository"
 	"github.com/mylazily/videosgo/pkg/crypto"
@@ -11,8 +12,8 @@ import (
 
 // UserService 用户服务
 type UserService struct {
-	repo     *repository.UserRepo
-	jwtMgr   *jwtpkg.JWTManager
+	repo   *repository.UserRepo
+	jwtMgr *jwtpkg.JWTManager
 }
 
 // NewUserService 创建用户服务
@@ -78,7 +79,7 @@ func (s *UserService) Login(username, password string) (string, *model.User, err
 		return "", nil, fmt.Errorf("用户名或密码错误")
 	}
 
-	token, err := s.jwtMgr.GenerateToken(user.ID, user.Username, user.IsAdmin)
+	token, err := s.jwtMgr.GenerateToken(user.ID.String(), user.Username, user.IsAdmin)
 	if err != nil {
 		return "", nil, fmt.Errorf("生成令牌失败: %w", err)
 	}
@@ -87,8 +88,12 @@ func (s *UserService) Login(username, password string) (string, *model.User, err
 }
 
 // GetUser 获取用户信息
-func (s *UserService) GetUser(id uint) (*model.User, error) {
-	return s.repo.GetByID(id)
+func (s *UserService) GetUser(id string) (*model.User, error) {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UUID: %s", id)
+	}
+	return s.repo.GetByID(parsedID)
 }
 
 // UpdateUser 更新用户信息
@@ -97,8 +102,12 @@ func (s *UserService) UpdateUser(user *model.User) error {
 }
 
 // DeleteUser 删除用户
-func (s *UserService) DeleteUser(id uint) error {
-	return s.repo.Delete(id)
+func (s *UserService) DeleteUser(id string) error {
+	parsedID, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("invalid UUID: %s", id)
+	}
+	return s.repo.Delete(parsedID)
 }
 
 // ListUsers 获取用户列表（管理员）
@@ -107,10 +116,14 @@ func (s *UserService) ListUsers(page, pageSize int) ([]model.User, int64, error)
 }
 
 // RefreshToken 刷新令牌
-func (s *UserService) RefreshToken(userID uint) (string, error) {
-	user, err := s.repo.GetByID(userID)
+func (s *UserService) RefreshToken(userID string) (string, error) {
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		return "", fmt.Errorf("invalid UUID: %s", userID)
+	}
+	user, err := s.repo.GetByID(parsedID)
 	if err != nil {
 		return "", fmt.Errorf("用户不存在")
 	}
-	return s.jwtMgr.GenerateToken(user.ID, user.Username, user.IsAdmin)
+	return s.jwtMgr.GenerateToken(user.ID.String(), user.Username, user.IsAdmin)
 }

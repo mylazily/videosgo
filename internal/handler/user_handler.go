@@ -76,7 +76,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 
-	user, err := h.svc.GetUser(userID.(uint))
+	user, err := h.svc.GetUser(userID.(string))
 	if err != nil {
 		response.NotFound(c, "用户不存在")
 		return
@@ -98,7 +98,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	user, err := h.svc.GetUser(userID.(uint))
+	user, err := h.svc.GetUser(userID.(string))
 	if err != nil {
 		response.NotFound(c, "用户不存在")
 		return
@@ -131,7 +131,7 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 	}
 
 	// 通过服务层验证旧密码并更新
-	user, err := h.svc.GetUser(userID.(uint))
+	user, err := h.svc.GetUser(userID.(string))
 	if err != nil {
 		response.NotFound(c, "用户不存在")
 		return
@@ -169,13 +169,9 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 // DeleteUser 删除用户（管理员）
 // DELETE /api/v1/admin/users/:id
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil {
-		response.BadRequest(c, "无效的 ID")
-		return
-	}
+	id := c.Param("id")
 
-	if err := h.svc.DeleteUser(uint(id)); err != nil {
+	if err := h.svc.DeleteUser(id); err != nil {
 		response.InternalError(c, "删除用户失败")
 		return
 	}
@@ -188,7 +184,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 func (h *UserHandler) RefreshToken(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 
-	token, err := h.svc.RefreshToken(userID.(uint))
+	token, err := h.svc.RefreshToken(userID.(string))
 	if err != nil {
 		response.Unauthorized(c, "刷新令牌失败")
 		return
