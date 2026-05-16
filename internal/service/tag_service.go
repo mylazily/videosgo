@@ -156,8 +156,12 @@ func (s *TagService) SyncVideoTags(videoID uuid.UUID, tagNames []string) error {
 	// 移除不再需要的标签关联
 	for _, currentTag := range currentTags {
 		if !newTagNames[currentTag.Name] {
-			_ = s.repo.RemoveVideoTag(videoID, currentTag.ID)
-			_ = s.repo.DecrementVideoCount(currentTag.ID)
+			if err := s.repo.RemoveVideoTag(videoID, currentTag.ID); err != nil {
+				fmt.Printf("[Tag] 移除视频标签关联失败: %v\n", err)
+			}
+			if err := s.repo.DecrementVideoCount(currentTag.ID); err != nil {
+				fmt.Printf("[Tag] 减少标签视频计数失败: %v\n", err)
+			}
 		}
 	}
 
@@ -172,8 +176,12 @@ func (s *TagService) SyncVideoTags(videoID uuid.UUID, tagNames []string) error {
 			}
 		}
 		if !exists {
-			_ = s.repo.AddVideoTag(videoID, tag.ID)
-			_ = s.repo.IncrementVideoCount(tag.ID)
+			if err := s.repo.AddVideoTag(videoID, tag.ID); err != nil {
+				fmt.Printf("[Tag] 添加视频标签关联失败: %v\n", err)
+			}
+			if err := s.repo.IncrementVideoCount(tag.ID); err != nil {
+				fmt.Printf("[Tag] 增加标签视频计数失败: %v\n", err)
+			}
 		}
 	}
 

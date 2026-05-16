@@ -100,7 +100,12 @@ func (s *PaymentService) ProcessPayment(orderNo string, channelType string) (*mo
 				IsActive:      true,
 				AutoRenew:     false,
 			}
-			_ = s.repo.CreateVIP(sub)
+			if err := s.repo.CreateVIP(sub); err != nil {
+				// VIP 创建失败是严重问题，记录日志并回滚订单状态
+				fmt.Printf("[Payment] VIP 创建失败（订单 %s）: %v\n", orderNo, err)
+				_ = s.repo.UpdateOrderStatus(orderNo, "failed", "VIP创建失败")
+				return order, fmt.Errorf("支付成功但 VIP 激活失败，请联系客服")
+			}
 		}
 
 		// 重新获取订单
@@ -108,7 +113,9 @@ func (s *PaymentService) ProcessPayment(orderNo string, channelType string) (*mo
 	}
 
 	// 支付失败
-	_ = s.repo.UpdateOrderStatus(orderNo, "failed", "")
+	if err := s.repo.UpdateOrderStatus(orderNo, "failed", ""); err != nil {
+		fmt.Printf("[Payment] 更新订单状态失败: %v\n", err)
+	}
 	return order, nil
 }
 

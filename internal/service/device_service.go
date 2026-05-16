@@ -69,15 +69,15 @@ func (s *DeviceService) UnlockVideo(fingerprintID, videoID uuid.UUID, unlockType
 	}
 
 	// 记录解锁
-	// 设置过期时间（24 小时后）
-	expiresAt := time.Now().Add(24 * time.Hour)
 	if err := s.repo.RecordUnlock(fingerprintID, videoID, unlockType); err != nil {
 		return fmt.Errorf("记录解锁失败: %w", err)
 	}
 
-	// 更新过期时间
-	_ = expiresAt
-	_ = s.updateUnlockExpiry(fingerprintID)
+	// 更新过期时间（24小时后）
+	if err := s.updateUnlockExpiry(fingerprintID); err != nil {
+		// 过期时间更新失败不影响解锁成功，仅记录日志
+		fmt.Printf("[Device] 更新解锁过期时间失败: %v\n", err)
+	}
 
 	return nil
 }

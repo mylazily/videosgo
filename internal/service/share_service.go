@@ -128,7 +128,9 @@ func (s *ShareService) CheckAndReward(shareLinkID, fingerprintID uuid.UUID) (boo
 	}
 
 	// 给点击者解锁视频
-	_ = s.deviceRepo.AddCoins(fingerprintID, 1)
+	if err := s.deviceRepo.AddCoins(fingerprintID, 1); err != nil {
+		fmt.Printf("[Share] 给点击者发放奖励失败: %v\n", err)
+	}
 
 	return true, nil
 }

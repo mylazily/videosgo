@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -20,12 +21,11 @@ import (
 
 // PushService 推送服务
 type PushService struct {
-	repo           *repository.PushRepo
-	vapidKey       *ecdsa.PrivateKey
-	vapidSub       string // VAPID 主题（通常是 mailto: 或 https:）
-	vapidPrivateKey string // VAPID 私钥字符串
-	sendQueue      chan pushTask
-	wg             sync.WaitGroup
+	repo     *repository.PushRepo
+	vapidKey *ecdsa.PrivateKey
+	vapidSub string // VAPID 主题（通常是 mailto: 或 https:）
+	sendQueue chan pushTask
+	wg        sync.WaitGroup
 }
 
 // pushTask 推送任务
@@ -211,15 +211,15 @@ func (s *PushService) sendPush(sub model.PushSubscription, payload []byte) {
 
 	// 构建带 VAPID 认证的 HTTP 请求
 	// 这里实现了标准的 Web Push 协议
-	req, err := http.NewRequest("POST", sub.Endpoint, nil)
+	req, err := http.NewRequest("POST", sub.Endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return
 	}
 
 	// 设置 TTL 头
 	req.Header.Set("TTL", "2419200")
-	req.Header.Set("Content-Type", "application/octet-stream")
-	req.Header.Set("Content-Encoding", "aes128gcm")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Length", fmt.Sprintf("%d", len(payload)))
 
 	// 生成 VAPID JWT
 	vapidJWT, err := s.generateVAPIDJWT(sub.Endpoint)
@@ -240,21 +240,26 @@ func (s *PushService) sendPush(sub model.PushSubscription, payload []byte) {
 	_ = s.repo.UpdateSubscription(&sub)
 }
 
-// generateVAPIDJWT 生成 VAPID JWT Token
+// generateVAPIDJWT 生成 VAPID JWT Token（使用 ECDSA P256 签名）
 func (s *PushService) generateVAPIDJWT(audience string) (string, error) {
+	if s.vapidKey == nil {
+		return "", fmt.Errorf("VAPID key not initialized")
+	}
+
 	// VAPID JWT claims
 	now := time.Now()
 	claims := jwt.MapClaims{
 		"aud": audience,
 		"exp": now.Add(12 * time.Hour).Unix(),
 		"iat": now.Unix(),
+		"sub": s.vapidSub,
 	}
 
-	// Create token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	// 使用 ECDSA P256 签名（Web Push 标准要求）
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 
-	// Sign with VAPID private key
-	tokenString, err := token.SignedString([]byte(s.vapidPrivateKey))
+	// 用 VAPID ECDSA 私钥签名
+	tokenString, err := token.SignedString(s.vapidKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign VAPID JWT: %w", err)
 	}
