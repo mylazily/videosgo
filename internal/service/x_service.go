@@ -46,7 +46,10 @@ func (s *XService) CreatePost(accountID, videoID uuid.UUID, text string, hashtag
 	// 异步发布
 	go s.publishPostAsync(postLog, account, hashtags)
 
-	return s.repo.CreatePostLog(postLog)
+	if err := s.repo.CreatePostLog(postLog); err != nil {
+		return nil, err
+	}
+	return postLog, nil
 }
 
 // publishPostAsync 异步发布推文
