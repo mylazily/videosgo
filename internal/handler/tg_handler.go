@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/mylazily/videosgo/internal/service"
@@ -22,16 +24,32 @@ func NewTGHandler(svc *service.TGService) *TGHandler {
 func (h *TGHandler) Webhook(c *gin.Context) {
 	var body map[string]interface{}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		response.BadRequest(c, "参数错误: "+err.Error())
+		// Telegram 要求快速响应，即使解析失败也返回 200
+		log.Printf("[TG] Webhook 解析失败: %v", err)
+		c.JSON(200, gin.H{"ok": true})
 		return
 	}
 
-	// TODO: 解析 TG Webhook 数据并处理
-	// 目前仅记录接收
-	response.Success(c, gin.H{
-		"received": true,
-		"update_id": body["update_id"],
+	// 立即返回 200 OK（Telegram 要求快速响应）
+	updateID := body["update_id"]
+	c.JSON(200, gin.H{
+		"ok":        true,
+		"update_id": updateID,
 	})
+
+	// 异步处理更新
+	go h.HandleUpdate(body)
+}
+
+// HandleUpdate 异步处理 Telegram 更新
+func (h *TGHandler) HandleUpdate(update map[string]interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[TG] 处理更新时 panic: %v", r)
+		}
+	}()
+
+	h.svc.ProcessUpdate(update)
 }
 
 // ListChannels 频道列表
@@ -112,7 +130,7 @@ func (h *TGHandler) GetMiniAppStats(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"total_sessions":  totalSessions,
+		"total_sessions":   totalSessions,
 		"total_watch_time": totalWatchTime,
 	})
 }

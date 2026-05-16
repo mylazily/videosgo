@@ -256,8 +256,9 @@ func (l *LogConfig) Validate() error {
 
 // TGConfig Telegram Bot 配置
 type TGConfig struct {
-	BotToken   string `mapstructure:"bot_token"`
-	WebhookURL string `mapstructure:"webhook_url"`
+	BotToken     string `mapstructure:"bot_token"`
+	WebhookURL   string `mapstructure:"webhook_url"`
+	AdminUserIDs string `mapstructure:"admin_user_ids"` // 逗号分隔的 TG 用户 ID
 }
 
 // PushConfig Web Push 配置
@@ -427,4 +428,9 @@ func setDefaults() {
 
 	viper.BindEnv("log.level", "LOG_LEVEL")
 	viper.BindEnv("log.output", "LOG_OUTPUT")
+
+	// TG Bot
+	viper.BindEnv("tg.bot_token", "TG_BOT_TOKEN")
+	viper.BindEnv("tg.webhook_url", "TG_WEBHOOK_URL")
+	viper.BindEnv("tg.admin_user_ids", "TG_ADMIN_USER_IDS")
 }
