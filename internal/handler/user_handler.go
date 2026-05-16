@@ -131,16 +131,11 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 	}
 
 	// 通过服务层验证旧密码并更新
-	user, err := h.svc.GetUser(userID.(string))
-	if err != nil {
-		response.NotFound(c, "用户不存在")
+	if err := h.svc.ChangePassword(userID.(string), req.OldPassword, req.NewPassword); err != nil {
+		response.BadRequest(c, err.Error())
 		return
 	}
 
-	_ = user // 密码验证在 service 层完成
-	_ = req
-
-	// 简化处理：直接更新
 	response.SuccessWithMessage(c, "密码修改成功", nil)
 }
 

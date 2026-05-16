@@ -127,3 +127,36 @@ func (s *UserService) RefreshToken(userID string) (string, error) {
 	}
 	return s.jwtMgr.GenerateToken(user.ID.String(), user.Username, user.IsAdmin)
 }
+
+// ChangePassword 修改密码
+func (s *UserService) ChangePassword(userID, oldPassword, newPassword string) error {
+	// 验证新密码长度
+	if len(newPassword) < 6 {
+		return fmt.Errorf("新密码长度不能少于 6 个字符")
+	}
+
+	// 获取用户
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("invalid UUID: %s", userID)
+	}
+	user, err := s.repo.GetByID(parsedID)
+	if err != nil {
+		return fmt.Errorf("用户不存在")
+	}
+
+	// 验证旧密码
+	if !crypto.CheckPassword(oldPassword, user.Password) {
+		return fmt.Errorf("旧密码错误")
+	}
+
+	// 哈希新密码
+	hashedPassword, err := crypto.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("密码加密失败: %w", err)
+	}
+
+	// 更新密码
+	user.Password = hashedPassword
+	return s.repo.Update(user)
+}
