@@ -12,6 +12,7 @@ import (
 	"github.com/mylazily/videosgo/internal/collector"
 	"github.com/mylazily/videosgo/internal/config"
 	"github.com/mylazily/videosgo/internal/database"
+	"github.com/mylazily/videosgo/internal/guard"
 	"github.com/mylazily/videosgo/internal/handler"
 	"github.com/mylazily/videosgo/internal/repository"
 	"github.com/mylazily/videosgo/internal/router"
@@ -165,6 +166,12 @@ func main() {
 	stationMonitor.Start(context.Background())
 	defer stationMonitor.Stop()
 	log.Println("[启动] 资源站监控已启动（每1分钟检查）")
+
+	// 10b. 启动 Oracle 自动控温守护（动态管理 lookbusy）
+	oracleGuard := guard.NewOracleGuard(guard.DefaultOracleGuardConfig())
+	oracleGuard.Start(context.Background())
+	defer oracleGuard.Stop()
+	log.Println("[启动] Oracle 自动控温守护已启动（每5分钟检查）")
 
 	// 11. 启动定时任务
 

@@ -1,7 +1,7 @@
 [Unit]
-Description=XVideos Go Backend
-After=network.target postgresql.service
-Wants=postgresql.service
+Description=XVideos Go Backend (Oracle ARM 4C24G Optimized)
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
 
 [Service]
 Type=simple
@@ -9,23 +9,43 @@ User=root
 WorkingDirectory=/opt/videosgo
 ExecStart=/opt/videosgo/bin/videosgo
 Restart=always
-RestartSec=5
-StartLimitBurst=5
+RestartSec=1s
+StartLimitBurst=10
 StartLimitIntervalSec=60
 
-# 资源限制（Oracle ARM 4核24G）
-LimitNOFILE=65535
+# =============================================================================
+# Oracle ARM 4核24G 极限优化
+# =============================================================================
+
+# 内存限制：Go 可用最大 16GB（留 8GB 给系统和 Redis）
+Environment=GOMEMLIMIT=16GiB
+# GC 频率：默认值，平衡内存和 CPU
+Environment=GOGC=100
+# 并行编译核心数
+Environment=GOMAXPROCS=4
+
+# 文件句柄：支持 1M 并发连接
+LimitNOFILE=1048576
 LimitNPROC=65535
 
+# 内存锁定：允许锁定内存（高性能缓存）
+LimitMEMLOCK=infinity
+
+# =============================================================================
 # 安全加固
+# =============================================================================
+
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/videosgo/data /opt/videosgo/logs
+ReadWritePaths=/opt/videosgo/data /opt/videosgo/logs /tmp
 PrivateTmp=true
 
-# 环境变量
-EnvironmentFile=/opt/videosgo/config/.env
+# =============================================================================
+# 环境变量文件
+# =============================================================================
+
+EnvironmentFile=-/opt/videosgo/config/.env
 
 [Install]
 WantedBy=multi-user.target
