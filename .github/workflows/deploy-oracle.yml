@@ -79,7 +79,7 @@ jobs:
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
           envs: APP_SECRET,DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,REDIS_HOST,JWT_SECRET,CRYPTO_KEY,TG_BOT_TOKEN,TG_WEBHOOK_URL,TG_ADMIN_USER_IDS
           script: |
             echo "=== 开始部署 videosgo ==="
