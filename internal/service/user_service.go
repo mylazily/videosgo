@@ -53,7 +53,7 @@ func (s *UserService) Register(username, password string) (*model.User, error) {
 
 	user := &model.User{
 		Username: username,
-		Password: hashedPassword,
+		PasswordHash: hashedPassword,
 		Status:   "active",
 	}
 
@@ -75,11 +75,11 @@ func (s *UserService) Login(username, password string) (string, *model.User, err
 		return "", nil, fmt.Errorf("账号已被禁用")
 	}
 
-	if !crypto.CheckPassword(password, user.Password) {
+	if !crypto.CheckPassword(password, user.PasswordHash) {
 		return "", nil, fmt.Errorf("用户名或密码错误")
 	}
 
-	token, err := s.jwtMgr.GenerateToken(user.ID.String(), user.Username, user.IsAdmin)
+	token, err := s.jwtMgr.GenerateToken(user.ID.String(), user.Username, user.Role == "admin")
 	if err != nil {
 		return "", nil, fmt.Errorf("生成令牌失败: %w", err)
 	}
@@ -125,7 +125,7 @@ func (s *UserService) RefreshToken(userID string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("用户不存在")
 	}
-	return s.jwtMgr.GenerateToken(user.ID.String(), user.Username, user.IsAdmin)
+	return s.jwtMgr.GenerateToken(user.ID.String(), user.Username, user.Role == "admin")
 }
 
 // ChangePassword 修改密码
@@ -146,7 +146,7 @@ func (s *UserService) ChangePassword(userID, oldPassword, newPassword string) er
 	}
 
 	// 验证旧密码
-	if !crypto.CheckPassword(oldPassword, user.Password) {
+	if !crypto.CheckPassword(oldPassword, user.PasswordHash) {
 		return fmt.Errorf("旧密码错误")
 	}
 
@@ -157,6 +157,6 @@ func (s *UserService) ChangePassword(userID, oldPassword, newPassword string) er
 	}
 
 	// 更新密码
-	user.Password = hashedPassword
+	user.PasswordHash = hashedPassword
 	return s.repo.Update(user)
 }
