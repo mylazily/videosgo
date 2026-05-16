@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,7 +94,7 @@ func (r *AdRewardRepo) RecordTaskCompletion(fingerprintID, taskID uuid.UUID) err
 			FingerprintID:   fingerprintID,
 			TaskID:          taskID,
 			CompletionCount: 1,
-			RewardGiven:     true,
+			RewardGiven:     1,
 		}
 		return r.db.Create(completion).Error
 	}
@@ -103,7 +104,7 @@ func (r *AdRewardRepo) RecordTaskCompletion(fingerprintID, taskID uuid.UUID) err
 	// 更新已有记录
 	return r.db.Model(&existing).Updates(map[string]interface{}{
 		"completion_count": gorm.Expr("completion_count + 1"),
-		"reward_given":     true,
+		"reward_given":     1,
 	}).Error
 }
 
