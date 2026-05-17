@@ -39,7 +39,6 @@ type PaymentOrder struct {
 	ID            uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	OrderNo       string     `gorm:"type:varchar(64);uniqueIndex;not null;comment:订单号" json:"order_no"`
 	FingerprintID *uuid.UUID `gorm:"type:uuid;index;comment:设备指纹 ID" json:"fingerprint_id"`
-	TGUserID      *int64     `gorm:"index;comment:Telegram 用户 ID" json:"tg_user_id"`
 	ChannelID     uuid.UUID  `gorm:"type:uuid;index;comment:支付渠道 ID" json:"channel_id"`
 	ProductType   string     `gorm:"type:varchar(50);not null;comment:产品类型 vip/coin" json:"product_type"`
 	ProductID     string     `gorm:"type:varchar(100);comment:产品 ID" json:"product_id"`
@@ -71,7 +70,6 @@ func (p *PaymentOrder) BeforeCreate() error {
 type VIPSubscription struct {
 	ID            uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
 	FingerprintID *uuid.UUID `gorm:"type:uuid;index;comment:设备指纹 ID" json:"fingerprint_id"`
-	TGUserID      *int64     `gorm:"index;comment:Telegram 用户 ID" json:"tg_user_id"`
 	PlanType      string     `gorm:"type:varchar(50);not null;comment:套餐类型 monthly/quarterly/yearly" json:"plan_type"`
 	StartAt       time.Time  `gorm:"comment:开始时间" json:"start_at"`
 	ExpiresAt     time.Time  `gorm:"index;comment:过期时间" json:"expires_at"`

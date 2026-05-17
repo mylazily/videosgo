@@ -3,10 +3,7 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -61,7 +58,6 @@ func main() {
 	p2pRepo := repository.NewP2PRepo(database.DB)
 	pushRepo := repository.NewPushRepo(database.DB)
 	redirectRepo := repository.NewRedirectRepo(database.DB)
-	tgRepo := repository.NewTGRepo(database.DB)
 	xRepo := repository.NewXRepo(database.DB)
 	paymentRepo := repository.NewPaymentRepo(database.DB)
 	domainRotationRepo := repository.NewDomainRotationRepo(database.DB)
@@ -96,7 +92,6 @@ func main() {
 	pushSvc := service.NewPushService(pushRepo, "")
 	redirectSvc := service.NewRedirectService(redirectRepo)
 	gscSvc := service.NewGSCService(siteRepo, "", "")
-	tgSvc := service.NewTGService(tgRepo, &cfg.TG, collectSvc)
 	xSvc := service.NewXService(xRepo)
 	paymentSvc := service.NewPaymentService(paymentRepo)
 	wsSvc := service.NewWSService()
@@ -132,7 +127,6 @@ func main() {
 	p2pHandler := handler.NewP2PHandler(p2pSvc)
 	pushHandler := handler.NewPushHandler(pushSvc)
 	redirectHandler := handler.NewRedirectHandler(redirectSvc)
-	tgHandler := handler.NewTGHandler(tgSvc)
 	xHandler := handler.NewXHandler(xSvc)
 	paymentHandler := handler.NewPaymentHandler(paymentSvc)
 	wsHandler := handler.NewWSHandler(wsSvc)
@@ -154,7 +148,7 @@ func main() {
 		commentHandler, danmakuHandler, rankHandler, collectHandler,
 		tagHandler, shortVideoHandler, recommendHandler, deviceHandler,
 		shareHandler, sitemapHandler, siteHandler, p2pHandler,
-		pushHandler, redirectHandler, tgHandler, xHandler,
+		pushHandler, redirectHandler, xHandler,
 		paymentHandler, wsHandler, domainHandler, adRewardHandler,
 		stationHandler, imageProxyHandler,
 		redirectFn)
@@ -234,23 +228,6 @@ func main() {
 			log.Fatalf("[启动] 服务启动失败: %v", err)
 		}
 	}()
-
-	// 12a. 注册 TG Webhook
-	if cfg.TG.BotToken != "" && cfg.TG.WebhookURL != "" {
-		go func() {
-			time.Sleep(3 * time.Second) // 等待服务启动完成
-			webhookURL := cfg.TG.WebhookURL
-			apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/setWebhook?url=%s", cfg.TG.BotToken, webhookURL)
-			resp, err := http.Get(apiURL)
-			if err != nil {
-				log.Printf("[TG] Webhook 注册失败: %v", err)
-				return
-			}
-			defer resp.Body.Close()
-			body, _ := io.ReadAll(resp.Body)
-			log.Printf("[TG] Webhook 注册结果: %s", string(body))
-		}()
-	}
 
 	// 13. 优雅关闭
 	quit := make(chan os.Signal, 1)

@@ -22,7 +22,6 @@ func NewPaymentHandler(svc *service.PaymentService) *PaymentHandler {
 func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 	var req struct {
 		FingerprintID string  `json:"fingerprint_id"`
-		TGUserID      *int64  `json:"tg_user_id"`
 		ChannelID     string  `json:"channel_id" binding:"required"`
 		ProductType   string  `json:"product_type" binding:"required"`
 		ProductID     string  `json:"product_id" binding:"required"`
@@ -50,7 +49,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	order, err := h.svc.CreateOrder(fingerprintID, req.TGUserID, channelID, req.ProductType, req.ProductID, req.ProductName, req.Amount)
+	order, err := h.svc.CreateOrder(fingerprintID, channelID, req.ProductType, req.ProductID, req.ProductName, req.Amount)
 	if err != nil {
 		response.InternalError(c, "创建订单失败")
 		return

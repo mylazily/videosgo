@@ -28,7 +28,7 @@ func (s *PaymentService) GenerateOrderNo() string {
 }
 
 // CreateOrder 创建支付订单
-func (s *PaymentService) CreateOrder(fingerprintID *uuid.UUID, tgUserID *int64, channelID uuid.UUID, productType, productID, productName string, amount float64) (*model.PaymentOrder, error) {
+func (s *PaymentService) CreateOrder(fingerprintID *uuid.UUID, channelID uuid.UUID, productType, productID, productName string, amount float64) (*model.PaymentOrder, error) {
 	// 获取渠道信息
 	channel, err := s.repo.GetChannelByID(channelID)
 	if err != nil {
@@ -39,10 +39,9 @@ func (s *PaymentService) CreateOrder(fingerprintID *uuid.UUID, tgUserID *int64, 
 	feeAmount := amount * channel.FeeRate
 
 	order := &model.PaymentOrder{
-		OrderNo:     s.GenerateOrderNo(),
+		OrderNo:       s.GenerateOrderNo(),
 		FingerprintID: fingerprintID,
-		TGUserID:    tgUserID,
-		ChannelID:   channelID,
+		ChannelID:     channelID,
 		ProductType: productType,
 		ProductID:   productID,
 		ProductName: productName,
@@ -93,7 +92,6 @@ func (s *PaymentService) ProcessPayment(orderNo string, channelType string) (*mo
 			planDuration := s.getPlanDuration(order.ProductID)
 			sub := &model.VIPSubscription{
 				FingerprintID: order.FingerprintID,
-				TGUserID:      order.TGUserID,
 				PlanType:      order.ProductID,
 				StartAt:       time.Now(),
 				ExpiresAt:     time.Now().Add(planDuration),
@@ -136,15 +134,6 @@ func (s *PaymentService) getPlanDuration(planType string) time.Duration {
 // VerifyVIPAccess 验证 VIP 权限
 func (s *PaymentService) VerifyVIPAccess(fingerprintID uuid.UUID) (*model.VIPSubscription, error) {
 	sub, err := s.repo.GetActiveVIP(fingerprintID)
-	if err != nil {
-		return nil, fmt.Errorf("无活跃 VIP 订阅")
-	}
-	return sub, nil
-}
-
-// VerifyVIPAccessByTGUserID 根据 TG 用户 ID 验证 VIP 权限
-func (s *PaymentService) VerifyVIPAccessByTGUserID(tgUserID int64) (*model.VIPSubscription, error) {
-	sub, err := s.repo.GetActiveVIPByTGUserID(tgUserID)
 	if err != nil {
 		return nil, fmt.Errorf("无活跃 VIP 订阅")
 	}

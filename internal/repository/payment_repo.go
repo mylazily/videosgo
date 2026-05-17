@@ -107,19 +107,6 @@ func (r *PaymentRepo) GetActiveVIP(fingerprintID uuid.UUID) (*model.VIPSubscript
 	return &sub, nil
 }
 
-// GetActiveVIPByTGUserID 根据 TG 用户 ID 获取活跃 VIP
-func (r *PaymentRepo) GetActiveVIPByTGUserID(tgUserID int64) (*model.VIPSubscription, error) {
-	var sub model.VIPSubscription
-	err := r.db.Where("tg_user_id = ? AND is_active = ? AND expires_at > ?",
-		tgUserID, true, time.Now()).
-		Order("expires_at DESC").
-		First(&sub).Error
-	if err != nil {
-		return nil, err
-	}
-	return &sub, nil
-}
-
 // ExpireVIP 使 VIP 过期
 func (r *PaymentRepo) ExpireVIP(id uuid.UUID) error {
 	return r.db.Model(&model.VIPSubscription{}).Where("id = ?", id).Updates(map[string]interface{}{

@@ -34,7 +34,6 @@ func Setup(
 	pushH *handler.PushHandler,
 	redirectH *handler.RedirectHandler,
 	// 功能扩展模块
-	tgH *handler.TGHandler,
 	xH *handler.XHandler,
 	paymentH *handler.PaymentHandler,
 	wsH *handler.WSHandler,
@@ -155,12 +154,6 @@ func Setup(
 		api.DELETE("/push/subscribe", pushH.Unsubscribe)
 		api.GET("/push/stats", pushH.GetStats)
 
-		// TG Bot（公开接口）
-		api.POST("/tg/webhook", tgH.Webhook)
-		api.GET("/tg/channels", tgH.ListChannels)
-		api.POST("/tg/miniapp/session", tgH.RegisterMiniAppSession)
-		api.GET("/tg/miniapp/stats", tgH.GetMiniAppStats)
-
 		// X.com（公开接口）
 		api.GET("/x/accounts", xH.ListAccounts)
 		api.GET("/x/posts", xH.ListPosts)
@@ -250,9 +243,6 @@ func Setup(
 
 		// 推送管理
 		admin.POST("/push/send", pushH.SendNotification)
-
-		// TG Bot 管理
-		admin.POST("/tg/broadcast", tgH.Broadcast)
 
 		// X.com 管理
 		admin.POST("/x/post", xH.CreatePost)
