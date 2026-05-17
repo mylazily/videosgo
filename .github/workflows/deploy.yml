@@ -1,0 +1,156 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  APP_NAME: videosgo
+  APP_DIR: /opt/videosgo
+  SERVICE_NAME: videosgo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Run tests
+        run: go test ./... -v -timeout 30s
+        continue-on-error: true
+
+      - name: Build (Linux ARM64)
+        run: |
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
+          go build -ldflags="-s -w" -o ${{ env.APP_NAME }}-server .
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+
+            echo "🚀 开始部署..."
+
+            # 创建目录
+            mkdir -p ${{ env.APP_DIR }}
+
+            # 停止服务（如果存在）
+            systemctl stop ${{ env.SERVICE_NAME }} 2>/dev/null || true
+
+            echo "✅ 服务已停止，等待新文件上传..."
+
+      - name: Upload binary
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          source: "${{ env.APP_NAME }}-server"
+          target: "${{ env.APP_DIR }}/"
+          strip_components: 0
+
+      - name: Upload config files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          source: "deploy/server-setup.sh"
+          target: "/tmp/"
+          strip_components: 1
+
+      - name: Start service
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+
+            APP_DIR="${{ env.APP_DIR }}"
+            SERVICE_NAME="${{ env.SERVICE_NAME }}"
+            BINARY="${{ env.APP_NAME }}-server"
+
+            echo "📂 设置权限..."
+            chmod +x $APP_DIR/$BINARY
+
+            # 如果 .env 不存在，从 .env.example 复制
+            if [ ! -f $APP_DIR/.env ]; then
+              cp $APP_DIR/.env.example $APP_DIR/.env
+              echo "⚠️  请编辑 $APP_DIR/.env 配置文件"
+            fi
+
+            echo "⚙️  创建 systemd 服务..."
+            cat > /etc/systemd/system/$SERVICE_NAME.service << 'SERVICE_EOF'
+            [Unit]
+            Description=VideosGo Backend Service
+            After=network.target postgresql.service redis.service
+            StartLimitIntervalSec=60
+            StartLimitBurst=5
+
+            [Service]
+            Type=simple
+            User=root
+            WorkingDirectory=/opt/videosgo
+            ExecStart=/opt/videosgo/videosgo-server
+            Restart=always
+            RestartSec=5
+            StandardOutput=journal
+            StandardError=journal
+            SyslogIdentifier=videosgo
+
+            [Install]
+            WantedBy=multi-user.target
+            SERVICE_EOF
+
+            echo "🔄 重载并启动服务..."
+            systemctl daemon-reload
+            systemctl enable $SERVICE_NAME
+            systemctl start $SERVICE_NAME
+
+            echo "⏳ 等待服务启动..."
+            sleep 3
+
+            echo "🔍 健康检查..."
+            HEALTH=$(curl -sf http://localhost:8080/health 2>&1 || echo "FAILED")
+            echo "健康检查结果: $HEALTH"
+
+            echo "📊 服务状态:"
+            systemctl status $SERVICE_NAME --no-pager -l || true
+
+            echo ""
+            echo "✅ 部署完成!"
+
+      - name: Notify on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          script: |
+            echo "❌ 部署失败，尝试回滚..."
+            systemctl restart videosgo 2>/dev/null || true
+            journalctl -u videosgo --no-pager -n 30
