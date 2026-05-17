@@ -14,7 +14,6 @@ type Config struct {
 	Redis     RedisConfig     `mapstructure:"redis"`
 	JWT       JWTConfig       `mapstructure:"jwt"`
 	Security  SecurityConfig  `mapstructure:"security"`
-	TG        TGConfig        `mapstructure:"tg"`
 }
 
 // AppConfig 应用配置
@@ -68,13 +67,6 @@ type SecurityConfig struct {
 	CORSOrigins []string `mapstructure:"cors_origins"`
 }
 
-// TGConfig Telegram Bot 配置
-type TGConfig struct {
-	BotToken     string   `mapstructure:"bot_token"`
-	WebhookURL   string   `mapstructure:"webhook_url"`
-	AdminUserIDs []int64  `mapstructure:"admin_user_ids"`
-}
-
 var GlobalConfig *Config
 
 // Load 加载配置
@@ -94,16 +86,6 @@ func Load() (*Config, error) {
 	// 解析 CORS origins
 	if origins := viper.GetString("CORS_ALLOWED_ORIGINS"); origins != "" {
 		config.Security.CORSOrigins = strings.Split(origins, ",")
-	}
-
-	// 解析 TG admin IDs
-	if ids := viper.GetString("TG_ADMIN_USER_IDS"); ids != "" {
-		for _, s := range strings.Split(ids, ",") {
-			var id int64
-			if _, err := fmt.Sscanf(strings.TrimSpace(s), "%d", &id); err == nil {
-				config.TG.AdminUserIDs = append(config.TG.AdminUserIDs, id)
-			}
-		}
 	}
 
 	GlobalConfig = config
@@ -132,10 +114,6 @@ func setDefaults() {
 	viper.SetDefault("JWT_SECRET", "your-jwt-secret-min-32-characters")
 	viper.SetDefault("JWT_EXPIRE_HOURS", 72)
 
-	viper.SetDefault("TG_BOT_TOKEN", "")
-	viper.SetDefault("TG_WEBHOOK_URL", "")
-	viper.SetDefault("TG_ADMIN_USER_IDS", "")
-
 	// 绑定环境变量
 	viper.BindEnv("app.env", "APP_ENV")
 	viper.BindEnv("app.port", "APP_PORT")
@@ -152,6 +130,4 @@ func setDefaults() {
 	viper.BindEnv("redis.db", "REDIS_DB")
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 	viper.BindEnv("jwt.expire_hours", "JWT_EXPIRE_HOURS")
-	viper.BindEnv("tg.bot_token", "TG_BOT_TOKEN")
-	viper.BindEnv("tg.webhook_url", "TG_WEBHOOK_URL")
 }

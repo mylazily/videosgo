@@ -62,19 +62,16 @@ func main() {
 	// 初始化仓库
 	userRepo := repository.NewUserRepository(db)
 	videoRepo := repository.NewVideoRepository(db)
-	tgRepo := repository.NewTGRepository(db)
 
 	// 初始化服务
 	authService := service.NewAuthService(cfg, userRepo)
 	userService := service.NewUserService(userRepo)
 	videoService := service.NewVideoService(videoRepo)
-	tgService := service.NewTGService(cfg.TG, tgRepo)
 
 	// 初始化处理器
 	authHandler := handler.NewAuthHandler(authService)
 	userHandler := handler.NewUserHandler(userService)
 	videoHandler := handler.NewVideoHandler(videoService)
-	tgHandler := handler.NewTGHandler(tgService)
 	healthHandler := handler.NewHealthHandler(db, redis)
 
 	// 创建路由
@@ -97,9 +94,6 @@ func main() {
 		api.POST("/auth/register", authHandler.Register)
 		api.POST("/auth/login", authHandler.Login)
 		api.POST("/auth/refresh", authHandler.RefreshToken)
-
-		// Telegram Webhook
-		api.POST("/tg/webhook", tgHandler.Webhook)
 
 		// 需要认证的路由
 		authorized := api.Group("")
