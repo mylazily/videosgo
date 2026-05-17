@@ -1,60 +1,58 @@
-// Package middleware HTTP 中间件
 package middleware
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	jwtpkg "github.com/mylazily/videosgo/pkg/jwt"
-	"github.com/mylazily/videosgo/pkg/response"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // Auth JWT 认证中间件
-func Auth(jwtMgr *jwtpkg.JWTManager) gin.HandlerFunc {
+func Auth(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 从 Header 获取令牌
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			response.Unauthorized(c, "请先登录")
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code":    401,
+				"message": "Authorization header required",
+			})
 			c.Abort()
 			return
 		}
 
-		// 支持 Bearer token 格式
 		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			response.Unauthorized(c, "令牌格式错误")
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code":    401,
+				"message": "Invalid authorization format",
+			})
 			c.Abort()
 			return
 		}
 
 		tokenString := parts[1]
-		claims, err := jwtMgr.ParseToken(tokenString)
-		if err != nil {
-			response.Unauthorized(c, "令牌无效或已过期")
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, jwt.ErrSignatureInvalid
+			}
+			return []byte(secret), nil
+		})
+
+		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code":    401,
+				"message": "Invalid or expired token",
+			})
 			c.Abort()
 			return
 		}
 
-		// 将用户信息存入上下文
-		c.Set("user_id", claims.UserID)
-		c.Set("username", claims.Username)
-		c.Set("is_admin", claims.IsAdmin)
-
-		c.Next()
-	}
-}
-
-// AdminRequired 管理员权限中间件（需配合 Auth 使用）
-func AdminRequired() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		isAdmin, exists := c.Get("is_admin")
-		isAdminVal, ok := isAdmin.(bool)
-		if !exists || !ok || !isAdminVal {
-			response.Forbidden(c, "需要管理员权限")
-			c.Abort()
-			return
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			c.Set("user_id", claims["user_id"])
+			c.Set("email", claims["email"])
 		}
+
 		c.Next()
 	}
 }
