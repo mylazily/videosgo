@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-/bin/
-/dist/
+videosgo
+videosgo-server
 
 # Test binary
 *.test
@@ -13,8 +13,9 @@
 # Output
 *.out
 
-# Go workspace
-go.work
+# Go
+vendor/
+go.sum
 
 # IDE
 .idea/
@@ -32,12 +33,15 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Docker
-docker-compose.override.yml
-
 # Logs
 *.log
 logs/
 
-# Temp
+# Database
+*.db
+*.sqlite
+
+# Temporary
 tmp/
+temp/
+*.tmp
