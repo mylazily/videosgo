@@ -1,0 +1,66 @@
+name: Health Check
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # 每 15 分钟检查一次
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check backend health
+        run: |
+          echo "🔍 检查后端健康状态..."
+          HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" https://9901.555554.xyz/health || echo "000")
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ 后端正常 (HTTP $HTTP_CODE)"
+          else
+            echo "❌ 后端异常 (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+
+      - name: Check database connectivity
+        uses: appleboy/ssh-action@v1
+        if: always()
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          script: |
+            echo "📊 服务状态:"
+            systemctl is-active videosgo || echo "服务未运行"
+            
+            echo ""
+            echo "💾 数据库状态:"
+            sudo -u postgres psql -d videosgo -c "SELECT 1" > /dev/null 2>&1 && echo "✅ PostgreSQL 正常" || echo "❌ PostgreSQL 异常"
+            
+            echo ""
+            echo "📦 Redis 状态:"
+            redis-cli ping 2>/dev/null && echo "✅ Redis 正常" || echo "⚠️ Redis 未响应"
+            
+            echo ""
+            echo "💾 磁盘使用:"
+            df -h / | tail -1
+            
+            echo ""
+            echo "🧠 内存使用:"
+            free -h | head -2
+
+      - name: Auto-restart on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          script: |
+            echo "🔄 尝试自动重启服务..."
+            systemctl restart videosgo
+            sleep 3
+            systemctl is-active videosgo && echo "✅ 重启成功" || echo "❌ 重启失败"
