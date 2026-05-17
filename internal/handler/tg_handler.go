@@ -1,136 +1,43 @@
 package handler
 
 import (
-	"log"
+	"encoding/json"
+	"io"
+	"net/http"
+
+	"videosgo/internal/service"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/mylazily/videosgo/internal/service"
-	"github.com/mylazily/videosgo/pkg/response"
 )
 
-// TGHandler TG Bot 处理器
+// TGHandler Telegram 处理器
 type TGHandler struct {
-	svc *service.TGService
+	tgService *service.TGService
 }
 
-// NewTGHandler 创建 TG Bot 处理器
-func NewTGHandler(svc *service.TGService) *TGHandler {
-	return &TGHandler{svc: svc}
+// NewTGHandler 创建 TG 处理器
+func NewTGHandler(tgService *service.TGService) *TGHandler {
+	return &TGHandler{tgService: tgService}
 }
 
-// Webhook TG Webhook 接收
-// POST /api/v1/tg/webhook
+// Webhook 处理 Webhook
 func (h *TGHandler) Webhook(c *gin.Context) {
-	var body map[string]interface{}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		// Telegram 要求快速响应，即使解析失败也返回 200
-		log.Printf("[TG] Webhook 解析失败: %v", err)
-		c.JSON(200, gin.H{"ok": true})
-		return
-	}
-
-	// 立即返回 200 OK（Telegram 要求快速响应）
-	updateID := body["update_id"]
-	c.JSON(200, gin.H{
-		"ok":        true,
-		"update_id": updateID,
-	})
-
-	// 异步处理更新
-	go h.HandleUpdate(body)
-}
-
-// HandleUpdate 异步处理 Telegram 更新
-func (h *TGHandler) HandleUpdate(update map[string]interface{}) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("[TG] 处理更新时 panic: %v", r)
-		}
-	}()
-
-	h.svc.ProcessUpdate(update)
-}
-
-// ListChannels 频道列表
-// GET /api/v1/tg/channels
-func (h *TGHandler) ListChannels(c *gin.Context) {
-	channels, err := h.svc.GetChannels()
+	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		response.InternalError(c, "获取频道列表失败")
-		return
-	}
-	response.Success(c, channels)
-}
-
-// Broadcast 手动群发（管理员）
-// POST /api/v1/tg/broadcast
-func (h *TGHandler) Broadcast(c *gin.Context) {
-	var req struct {
-		VideoID string `json:"video_id" binding:"required"`
-		Text    string `json:"text" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误: "+err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"error": "read body failed"})
 		return
 	}
 
-	videoID, err := uuid.Parse(req.VideoID)
-	if err != nil {
-		response.BadRequest(c, "无效的视频 ID")
+	var update service.TGUpdate
+	if err := json.Unmarshal(body, &update); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
 
-	// 异步群发
-	h.svc.BroadcastToAllChannels(videoID, req.Text)
-
-	response.SuccessWithMessage(c, "群发任务已提交", nil)
-}
-
-// RegisterMiniAppSession Mini App 会话注册
-// POST /api/v1/tg/miniapp/session
-func (h *TGHandler) RegisterMiniAppSession(c *gin.Context) {
-	var req struct {
-		TGUserID      int64   `json:"tg_user_id" binding:"required"`
-		TGUsername    string  `json:"tg_username"`
-		TGLanguage    string  `json:"tg_language"`
-		FingerprintID *string `json:"fingerprint_id"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误: "+err.Error())
+	if err := h.tgService.HandleUpdate(&update); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	var fingerprintID *uuid.UUID
-	if req.FingerprintID != nil && *req.FingerprintID != "" {
-		id, err := uuid.Parse(*req.FingerprintID)
-		if err != nil {
-			response.BadRequest(c, "无效的设备指纹 ID")
-			return
-		}
-		fingerprintID = &id
-	}
-
-	session, err := h.svc.RegisterMiniAppSession(req.TGUserID, req.TGUsername, req.TGLanguage, fingerprintID)
-	if err != nil {
-		response.InternalError(c, "注册会话失败")
-		return
-	}
-
-	response.Success(c, session)
-}
-
-// GetMiniAppStats Mini App 统计
-// GET /api/v1/tg/miniapp/stats
-func (h *TGHandler) GetMiniAppStats(c *gin.Context) {
-	totalSessions, totalWatchTime, err := h.svc.GetMiniAppStats()
-	if err != nil {
-		response.InternalError(c, "获取统计失败")
-		return
-	}
-
-	response.Success(c, gin.H{
-		"total_sessions":   totalSessions,
-		"total_watch_time": totalWatchTime,
-	})
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
