@@ -1,31 +1,56 @@
 package handler
 
 import (
+	"database/sql"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/pkg/response"
+	"github.com/redis/go-redis/v9"
 )
 
 // HealthHandler 健康检查处理器
-type HealthHandler struct{}
+type HealthHandler struct {
+	db    *sql.DB
+	redis *redis.Client
+}
 
 // NewHealthHandler 创建健康检查处理器
-func NewHealthHandler() *HealthHandler {
-	return &HealthHandler{}
+func NewHealthHandler(db *sql.DB, redis *redis.Client) *HealthHandler {
+	return &HealthHandler{
+		db:    db,
+		redis: redis,
+	}
 }
 
-// Ping 健康检查
-// GET /api/v1/ping
-func (h *HealthHandler) Ping(c *gin.Context) {
-	response.Success(c, gin.H{
-		"status":  "ok",
-		"message": "pong",
-	})
-}
-
-// Health 详细健康检查
-// GET /api/v1/health
+// Health 健康检查
 func (h *HealthHandler) Health(c *gin.Context) {
-	response.Success(c, gin.H{
-		"status": "healthy",
+	status := "ok"
+	checks := gin.H{}
+
+	// 检查数据库
+	if h.db != nil {
+		if err := h.db.Ping(); err != nil {
+			status = "degraded"
+			checks["database"] = "error"
+		} else {
+			checks["database"] = "ok"
+		}
+	}
+
+	// 检查 Redis
+	if h.redis != nil {
+		if err := h.redis.Ping(c).Err(); err != nil {
+			status = "degraded"
+			checks["redis"] = "error"
+		} else {
+			checks["redis"] = "ok"
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  status,
+		"service": "videosgo",
+		"version": "1.0.0",
+		"checks":  checks,
 	})
 }
