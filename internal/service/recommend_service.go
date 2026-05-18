@@ -15,13 +15,13 @@ import (
 // RecommendService 推荐服务
 type RecommendService struct {
 	tagRepo   *repository.TagRepo
-	videoRepo *repository.VideoRepo
+	videoRepo *repository.VideoRepository
 }
 
 // NewRecommendService 创建推荐服务
 func NewRecommendService(
 	tagRepo *repository.TagRepo,
-	videoRepo *repository.VideoRepo,
+	videoRepo *repository.VideoRepository,
 ) *RecommendService {
 	return &RecommendService{
 		tagRepo:   tagRepo,
@@ -74,7 +74,7 @@ func (s *RecommendService) GetRelatedVideos(videoID uuid.UUID, limit int) ([]mod
 	// 如果关联视频不足，用随机视频补充
 	if len(videos) < limit {
 		remaining := limit - len(videos)
-		existingIDs := make(map[uuid.UUID]bool)
+		existingIDs := make(map[string]bool)
 		for _, v := range videos {
 			existingIDs[v.ID] = true
 		}

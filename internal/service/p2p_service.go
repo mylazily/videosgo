@@ -1,14 +1,13 @@
 package service
 
 import (
+	"github.com/google/uuid"
+	"fmt"
 	"sync"
 	"time"
 
 	"videosgo/internal/model"
 	"videosgo/internal/repository"
-
-	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 // P2PService P2P 信令服务
@@ -16,31 +15,11 @@ type P2PService struct {
 	repo         *repository.P2PRepo
 	memoryPeers  sync.Map // 内存中的在线节点缓存 peerID -> *model.PeerRegistry
 	memorySignals sync.Map // 内存中的信令缓存 roomID -> []model.SignalChannel
-	roomMu       sync.Map // 保护每个 room 的并发操作 roomID -> *sync.Mutex
-	logger       *zap.Logger
 }
 
 // NewP2PService 创建 P2P 信令服务
-func NewP2PService(repo *repository.P2PRepo, logger *zap.Logger) *P2PService {
-	return &P2PService{repo: repo, logger: logger}
-}
-
-// getRoomMutex 获取指定 room 的互斥锁
-func (s *P2PService) getRoomMutex(roomID string) *sync.Mutex {
-	val, _ := s.roomMu.LoadOrStore(roomID, &sync.Mutex{})
-	return val.(*sync.Mutex)
-}
-
-// parseUUID 安全解析 UUID，空字符串时返回 uuid.Nil
-func parseUUID(s string) uuid.UUID {
-	if s == "" {
-		return uuid.Nil
-	}
-	id, err := uuid.Parse(s)
-	if err != nil {
-		return uuid.Nil
-	}
-	return id
+func NewP2PService(repo *repository.P2PRepo) *P2PService {
+	return &P2PService{repo: repo}
 }
 
 // RegisterPeer 注册节点
@@ -67,7 +46,7 @@ func (s *P2PService) Heartbeat(peerID, videoID string) error {
 			now := time.Now()
 			peer.LastHeartbeat = &now
 			if videoID != "" {
-				peer.CurrentVideoID = parseUUID(videoID)
+				peer.CurrentVideoID = uuid.MustParse(videoID)
 			}
 		}
 	}
@@ -80,7 +59,7 @@ func (s *P2PService) OfferSignal(roomID, peerID, fingerprintID, targetPeerID, sd
 	signal := &model.SignalChannel{
 		RoomID:        roomID,
 		PeerID:        peerID,
-		FingerprintID: parseUUID(fingerprintID),
+		FingerprintID: uuid.MustParse(fingerprintID),
 		SignalType:    "offer",
 		SDPData:       sdpData,
 		TargetPeerID:  targetPeerID,
@@ -97,7 +76,7 @@ func (s *P2PService) AnswerSignal(roomID, peerID, fingerprintID, targetPeerID, s
 	signal := &model.SignalChannel{
 		RoomID:        roomID,
 		PeerID:        peerID,
-		FingerprintID: parseUUID(fingerprintID),
+		FingerprintID: uuid.MustParse(fingerprintID),
 		SignalType:    "answer",
 		SDPData:       sdpData,
 		TargetPeerID:  targetPeerID,
@@ -112,7 +91,7 @@ func (s *P2PService) ExchangeICE(roomID, peerID, fingerprintID, targetPeerID, ic
 	signal := &model.SignalChannel{
 		RoomID:        roomID,
 		PeerID:        peerID,
-		FingerprintID: parseUUID(fingerprintID),
+		FingerprintID: uuid.MustParse(fingerprintID),
 		SignalType:    "ice",
 		ICECandidate:  iceCandidate,
 		TargetPeerID:  targetPeerID,
@@ -189,13 +168,13 @@ func (s *P2PService) Cleanup() {
 	// 清理过期信令（5 分钟过期）
 	deletedSignals, err := s.repo.CleanupExpiredSignals(300)
 	if err == nil {
-		s.logger.Info("清理了过期信令", zap.Int64("count", deletedSignals))
+		fmt.Printf("[P2P] 清理了 %d 条过期信令\n", deletedSignals)
 	}
 
 	// 清理失活节点（心跳超时 60 秒）
 	deletedPeers, err := s.repo.CleanupInactivePeers(60)
 	if err == nil {
-		s.logger.Info("清理了失活节点", zap.Int64("count", deletedPeers))
+		fmt.Printf("[P2P] 清理了 %d 个失活节点\n", deletedPeers)
 		// 同步清理内存缓存
 		if deletedPeers > 0 {
 			allPeers, _ := s.repo.GetAllActivePeers()
@@ -236,13 +215,6 @@ func (s *P2PService) Cleanup() {
 
 // appendMemorySignal 向内存信令缓存追加信令
 func (s *P2PService) appendMemorySignal(roomID string, signal model.SignalChannel) {
-	mu := s.getRoomMutex(roomID)
-	mu.Lock()
-	defer mu.Unlock()
-
-	// 设置创建时间
-	signal.CreatedAt = time.Now()
-
 	val, _ := s.memorySignals.LoadOrStore(roomID, []model.SignalChannel{})
 	signals := val.([]model.SignalChannel)
 	signals = append(signals, signal)

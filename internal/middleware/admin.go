@@ -26,7 +26,7 @@ func RequireAdmin() gin.HandlerFunc {
 		}
 
 		if !isAdminBool {
-			response.Error(c, http.StatusForbidden, "需要管理员权限", nil)
+			response.Error(c, http.StatusForbidden, "需要管理员权限")
 			c.Abort()
 			return
 		}

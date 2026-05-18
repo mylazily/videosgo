@@ -81,7 +81,8 @@ func (r *RedirectRepo) MatchRule(domain, path, ua, ip string) (*model.RedirectRu
 	for i := range rules {
 		if matchPath(rules[i].RuleType, rules[i].SourcePath, path) {
 			// 检查附加条件（如果有）
-			if matchConditions(rules[i].Conditions, ua, ip) {
+			condMap, _ := rules[i].Conditions.ToMap()
+			if matchConditions(condMap, ua, ip) {
 				return &rules[i], nil
 			}
 		}

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -30,9 +31,10 @@ func (s *XService) CreatePost(accountID, videoID uuid.UUID, text string, hashtag
 	}
 
 	// 构建标签 JSON
-	hashtagJSON := make(map[string]interface{})
+	var hashtagJSON model.JSONB
 	if len(hashtags) > 0 {
-		hashtagJSON["tags"] = hashtags
+		data, _ := json.Marshal(map[string]interface{}{"tags": hashtags})
+		hashtagJSON = model.JSONB(data)
 	}
 
 	postLog := &model.XPostLog{

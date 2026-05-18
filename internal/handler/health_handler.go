@@ -12,17 +12,15 @@ import (
 
 // HealthHandler 健康检查处理器
 type HealthHandler struct {
-	db      *gorm.DB
-	redis   *redis.Client
-	version string
+	db    *gorm.DB
+	redis *redis.Client
 }
 
 // NewHealthHandler 创建健康检查处理器
-func NewHealthHandler(db *gorm.DB, redis *redis.Client, version string) *HealthHandler {
+func NewHealthHandler(db *gorm.DB, redis *redis.Client) *HealthHandler {
 	return &HealthHandler{
-		db:      db,
-		redis:   redis,
-		version: version,
+		db:    db,
+		redis: redis,
 	}
 }
 
@@ -38,7 +36,8 @@ func (h *HealthHandler) Health(c *gin.Context) {
 
 	// 检查数据库
 	if h.db != nil {
-		if err := h.db.Raw("SELECT 1").Error; err != nil {
+		sqlDB, err := h.db.DB()
+		if err != nil || sqlDB.Ping() != nil {
 			status = "degraded"
 			checks["database"] = "error"
 		} else {
@@ -59,7 +58,7 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	response.Success(c, gin.H{
 		"status":  status,
 		"service": "videosgo",
-		"version": h.version,
+		"version": "1.0.0",
 		"checks":  checks,
 	})
 }

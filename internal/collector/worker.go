@@ -182,7 +182,7 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 			Remarks:     item.VodRemark,
 			PlayLinks:   playLinksJSON,
 			Status:      "active",
-			SourceID:    source.ID,
+			SourceID:    source.ID.String(),
 			// 新增字段
 			CleanTitle:  cleanTitle,
 			PlayLines:   playLines,
@@ -201,7 +201,7 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 		}
 
 		// 创建剧集
-		w.createEpisodes(video.ID, playLinks, source.ID)
+		w.createEpisodes(uuid.MustParse(video.ID), playLinks, source.ID)
 
 		// 记录到 Redis 热搜
 		recordSearchHot(normalTitle)
@@ -236,7 +236,7 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 	}
 
 	// 追加新的播放线路（去重）
-	if err := w.appendPlayLines(existing.ID, playLines); err != nil {
+	if err := w.appendPlayLines(uuid.MustParse(existing.ID), playLines); err != nil {
 		log.Printf("[采集] 追加播放线路失败 (视频ID=%s): %v", existing.ID, err)
 	}
 
@@ -245,7 +245,7 @@ func (w *Worker) doProcessItem(item MacCMSVideoItem, source *model.CollectSource
 		UpdateColumn("source_count", gorm.Expr("source_count + 1"))
 
 	// 尝试更新域名池
-	w.tryUpdateDomainPool(existing.ID, playLinks)
+	w.tryUpdateDomainPool(uuid.MustParse(existing.ID), playLinks)
 
 	log.Printf("[采集] 聚合更新: %s -> 已有视频 ID=%s (来源: %s)",
 		item.VodName, existing.ID, source.Name)

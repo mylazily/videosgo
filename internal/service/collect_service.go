@@ -14,12 +14,12 @@ import (
 // CollectService 采集源服务
 type CollectService struct {
 	repo     *repository.CollectRepo
-	videoRepo *repository.VideoRepo
+	videoRepo *repository.VideoRepository
 	worker   *collector.Worker
 }
 
 // NewCollectService 创建采集源服务
-func NewCollectService(repo *repository.CollectRepo, videoRepo *repository.VideoRepo, worker *collector.Worker) *CollectService {
+func NewCollectService(repo *repository.CollectRepo, videoRepo *repository.VideoRepository, worker *collector.Worker) *CollectService {
 	return &CollectService{
 		repo:      repo,
 		videoRepo: videoRepo,
