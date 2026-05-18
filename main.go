@@ -18,7 +18,6 @@ import (
 	"videosgo/internal/repository"
 	"videosgo/internal/service"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -110,7 +109,7 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger(log))
 	r.Use(middleware.ErrorHandler())
-	r.Use(cors.New(corsConfig(cfg)))
+	r.Use(dynamicCors())
 
 	// 健康检查（公开）
 	r.GET("/health", func(c *gin.Context) {
@@ -211,37 +210,28 @@ func main() {
 	log.Info("Server exited")
 }
 
-func corsConfig(cfg *config.Config) cors.Config {
-	c := cors.DefaultConfig()
+// dynamicCors 动态回显 CORS 中间件
+// 前端带什么 Origin 来，就回显什么 Origin，支持任意站群域名跨域
+func dynamicCors() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
 
-	// 允许的来源
-	if len(cfg.Security.CORSOrigins) == 0 {
-		c.AllowOrigins = []string{
-			"https://901.555554.xyz",
-			"https://shipinku.pages.dev",
-			"https://*.pages.dev",
-			"http://localhost:3000",
-			"http://localhost:5173",
-			"http://localhost:8080",
+		if origin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		}
-	} else {
-		c.AllowOrigins = cfg.Security.CORSOrigins
-	}
 
-	c.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
-	c.AllowHeaders = []string{
-		"Origin",
-		"Content-Length",
-		"Content-Type",
-		"Authorization",
-		"X-Requested-With",
-		"Accept",
-		"X-Real-IP",
-		"X-Forwarded-For",
-	}
-	c.ExposeHeaders = []string{"Content-Length", "Content-Type", "X-Request-ID"}
-	c.AllowCredentials = true
-	c.MaxAge = 12 * time.Hour
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Authorization, X-Requested-With, Accept, X-Real-IP, X-Forwarded-For")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type, X-Request-ID")
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
-	return c
+		// 拦截 OPTIONS 预检请求，直接返回 204
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	}
 }
