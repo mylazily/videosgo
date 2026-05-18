@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/model"
+	"videosgo/internal/repository"
 )
 
 // DomainRotationService 域名轮询服务

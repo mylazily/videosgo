@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/pkg/response"
+	"videosgo/pkg/response"
 )
 
 // Recovery Panic 恢复中间件

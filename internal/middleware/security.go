@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/internal/logger"
-	"github.com/mylazily/videosgo/pkg/response"
+	"videosgo/internal/logger"
+	"videosgo/pkg/response"
 )
 
 // SecurityConfig 安全配置

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/pkg/response"
+	"videosgo/pkg/response"
 )
 
 // RateLimiter 滑动窗口限流器

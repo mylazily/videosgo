@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/repository"
 )
 
 // GSCService Google Search Console / Bing Sitemap 提交服务

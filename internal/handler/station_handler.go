@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/internal/service"
-	"github.com/mylazily/videosgo/pkg/response"
+	"videosgo/internal/service"
+	"videosgo/pkg/response"
 )
 
 // StationHandler 资源站监控 Handler

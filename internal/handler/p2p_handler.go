@@ -3,9 +3,9 @@ package handler
 import (
 	"github.com/google/uuid"
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/service"
-	"github.com/mylazily/videosgo/pkg/response"
+	"videosgo/internal/model"
+	"videosgo/internal/service"
+	"videosgo/pkg/response"
 )
 
 // P2PHandler P2P 信令处理器

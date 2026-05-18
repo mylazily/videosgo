@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/pkg/crypto"
+	"videosgo/pkg/crypto"
 )
 
 // CryptoResponse 需要加密的响应结构

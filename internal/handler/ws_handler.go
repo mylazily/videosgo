@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/mylazily/videosgo/internal/service"
-	"github.com/mylazily/videosgo/pkg/response"
+	"videosgo/internal/service"
+	"videosgo/pkg/response"
 )
 
 var upgrader = websocket.Upgrader{

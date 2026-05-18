@@ -4,8 +4,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/internal/service"
-	"github.com/mylazily/videosgo/pkg/response"
+	"videosgo/internal/service"
+	"videosgo/pkg/response"
 )
 
 // PushHandler 推送处理器

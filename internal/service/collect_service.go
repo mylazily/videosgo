@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mylazily/videosgo/internal/collector"
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/collector"
+	"videosgo/internal/model"
+	"videosgo/internal/repository"
 )
 
 // CollectService 采集源服务

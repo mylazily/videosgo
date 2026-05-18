@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/model"
+	"videosgo/internal/repository"
 )
 
 // CommentService 评论服务

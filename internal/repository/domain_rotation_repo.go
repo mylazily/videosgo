@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/google/uuid"
-	"github.com/mylazily/videosgo/internal/model"
+	"videosgo/internal/model"
 	"gorm.io/gorm"
 )
 

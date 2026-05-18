@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mylazily/videosgo/internal/database"
-	"github.com/mylazily/videosgo/internal/model"
+	"videosgo/internal/database"
+	"videosgo/internal/model"
 	"gorm.io/gorm"
 )
 

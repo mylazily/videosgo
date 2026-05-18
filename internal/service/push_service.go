@@ -13,8 +13,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/model"
+	"videosgo/internal/repository"
 )
 
 // PushService 推送服务

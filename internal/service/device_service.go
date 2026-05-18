@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/model"
+	"videosgo/internal/repository"
 )
 
 // DeviceService 设备指纹服务

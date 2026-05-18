@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mylazily/videosgo/internal/database"
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/database"
+	"videosgo/internal/model"
+	"videosgo/internal/repository"
 )
 
 // SiteService 站群管理服务

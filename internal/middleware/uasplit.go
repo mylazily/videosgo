@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/internal/database"
+	"videosgo/internal/database"
 )
 
 // 已知的搜索引擎爬虫 User-Agent 关键词

@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/service"
-	"github.com/mylazily/videosgo/pkg/response"
+	"videosgo/internal/model"
+	"videosgo/internal/service"
+	"videosgo/pkg/response"
 )
 
 // CommentHandler 评论处理器

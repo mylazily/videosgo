@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/model"
+	"videosgo/internal/repository"
 )
 
 // P2PService P2P 信令服务

@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 
-	"github.com/mylazily/videosgo/internal/model"
-	"github.com/mylazily/videosgo/internal/repository"
+	"videosgo/internal/model"
+	"videosgo/internal/repository"
 )
 
 // RedirectService 301 重定向引擎服务

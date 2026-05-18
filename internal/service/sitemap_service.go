@@ -9,8 +9,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/mylazily/videosgo/internal/database"
-	"github.com/mylazily/videosgo/internal/model"
+	"videosgo/internal/database"
+	"videosgo/internal/model"
 )
 
 // SitemapService Sitemap 生成服务

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mylazily/videosgo/internal/logger"
+	"videosgo/internal/logger"
 	"golang.org/x/time/rate"
 )
 

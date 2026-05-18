@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mylazily/videosgo/internal/service"
+	"videosgo/internal/service"
 )
 
 // SitemapHandler Sitemap 处理器

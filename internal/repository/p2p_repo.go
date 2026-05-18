@@ -3,7 +3,7 @@ package repository
 import (
 	"time"
 
-	"github.com/mylazily/videosgo/internal/model"
+	"videosgo/internal/model"
 	"gorm.io/gorm"
 )
 
