@@ -29,7 +29,7 @@ jobs:
           GOARCH: arm64
         run: |
           go mod download
-          go build -ldflags="-s -w" -o videosgo-arm64 ./cmd/server
+          go build -ldflags="-s -w" -o videosgo-arm64 .
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3

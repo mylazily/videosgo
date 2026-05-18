@@ -62,6 +62,23 @@ func (r *UserRepository) GetByID(id string) (*model.User, error) {
 	return user, err
 }
 
+// GetByUsername 根据用户名获取用户
+func (r *UserRepository) GetByUsername(username string) (*model.User, error) {
+	query := `
+		SELECT id, username, email, password_hash, avatar, status, created_at, updated_at
+		FROM users WHERE username = $1
+	`
+	user := &model.User{}
+	err := r.db.QueryRow(query, username).Scan(
+		&user.ID, &user.Username, &user.Email, &user.Password,
+		&user.Avatar, &user.Status, &user.CreatedAt, &user.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return user, err
+}
+
 // Update 更新用户
 func (r *UserRepository) Update(user *model.User) error {
 	query := `

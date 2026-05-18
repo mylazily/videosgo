@@ -22,9 +22,17 @@ func NewHealthHandler(db *sql.DB, redis *redis.Client) *HealthHandler {
 	}
 }
 
-// Health 健康检查
+// Ping 简单的 ping 检查
+func (h *HealthHandler) Ping(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "pong",
+	})
+}
+
+// Health 健康检查（兼容前端 apiConfigStore 格式）
 func (h *HealthHandler) Health(c *gin.Context) {
-	status := "ok"
+	status := "healthy"
 	checks := gin.H{}
 
 	// 检查数据库
@@ -48,9 +56,13 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  status,
-		"service": "videosgo",
-		"version": "1.0.0",
-		"checks":  checks,
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"status":  status,
+			"service": "videosgo",
+			"version": "1.0.0",
+			"checks":  checks,
+		},
 	})
 }

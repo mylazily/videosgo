@@ -34,9 +34,10 @@ type RegisterRequest struct {
 	Password string `json:"password" binding:"required,min=6"`
 }
 
-// LoginRequest 登录请求
+// LoginRequest 登录请求（支持用户名或邮箱登录）
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -83,29 +84,39 @@ func (s *AuthService) Register(req *RegisterRequest) (*model.User, error) {
 	return user, nil
 }
 
-// Login 用户登录
-func (s *AuthService) Login(req *LoginRequest) (*TokenResponse, error) {
-	// 查找用户
-	user, err := s.userRepo.GetByEmail(req.Email)
+// Login 用户登录（返回 tokens 和 user）
+func (s *AuthService) Login(req *LoginRequest) (*TokenResponse, *model.User, error) {
+	var user *model.User
+	var err error
+
+	// 支持用户名或邮箱登录
+	if req.Username != "" {
+		user, err = s.userRepo.GetByUsername(req.Username)
+	} else if req.Email != "" {
+		user, err = s.userRepo.GetByEmail(req.Email)
+	} else {
+		return nil, nil, errors.New("请输入用户名或邮箱")
+	}
+
 	if err != nil {
-		return nil, err
+		return nil, nil, errors.New("用户名或密码错误")
 	}
 	if user == nil {
-		return nil, errors.New("invalid email or password")
+		return nil, nil, errors.New("用户名或密码错误")
 	}
 
 	// 验证密码
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, errors.New("invalid email or password")
+		return nil, nil, errors.New("用户名或密码错误")
 	}
 
 	// 生成 Token
 	tokens, err := s.generateTokens(user)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return tokens, nil
+	return tokens, user, nil
 }
 
 // generateTokens 生成 JWT Token
@@ -126,7 +137,7 @@ func (s *AuthService) generateTokens(user *model.User) (*TokenResponse, error) {
 
 	return &TokenResponse{
 		AccessToken:  accessToken,
-		RefreshToken: uuid.New().String(), // 简化处理，实际应该存储 refresh token
+		RefreshToken: uuid.New().String(),
 		ExpiresIn:    expiresIn,
 		TokenType:    "Bearer",
 	}, nil

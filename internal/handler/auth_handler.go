@@ -22,7 +22,7 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req service.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
 			"message": err.Error(),
 		})
@@ -31,7 +31,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	user, err := h.authService.Register(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
 			"message": err.Error(),
 		})
@@ -39,7 +39,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
+		"code":    0,
 		"message": "注册成功",
 		"data":    user.ToResponse(),
 	})
@@ -49,16 +49,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req service.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    400,
 			"message": err.Error(),
 		})
 		return
 	}
 
-	tokens, err := h.authService.Login(&req)
+	tokens, user, err := h.authService.Login(&req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"code":    401,
 			"message": err.Error(),
 		})
@@ -66,9 +66,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
+		"code":    0,
 		"message": "登录成功",
-		"data":    tokens,
+		"data": gin.H{
+			"token":         tokens.AccessToken,
+			"refresh_token": tokens.RefreshToken,
+			"expires_in":    tokens.ExpiresIn,
+			"token_type":    tokens.TokenType,
+			"user":          user.ToResponse(),
+		},
 	})
 }
 
@@ -76,7 +82,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	// TODO: 实现刷新逻辑
 	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
+		"code":    0,
 		"message": "刷新成功",
 	})
 }

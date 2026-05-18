@@ -51,12 +51,9 @@ func main() {
 	defer db.Close()
 
 	// 初始化 Redis
-	redis, err := database.NewRedis(cfg.Redis)
+	redisClient, err := database.NewRedis(cfg.Redis)
 	if err != nil {
-		log.Warn("Failed to connect to Redis", zap.Error(err))
-	}
-	if redis != nil {
-		defer redis.Close()
+		log.Warn("Failed to connect to Redis, running in degraded mode", zap.Error(err))
 	}
 
 	// 初始化仓库
@@ -72,7 +69,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(authService)
 	userHandler := handler.NewUserHandler(userService)
 	videoHandler := handler.NewVideoHandler(videoService)
-	healthHandler := handler.NewHealthHandler(db, redis)
+	healthHandler := handler.NewHealthHandler(db, redisClient)
 
 	// 创建路由
 	r := gin.New()
@@ -86,14 +83,19 @@ func main() {
 	// 健康检查
 	r.GET("/health", healthHandler.Health)
 	r.GET("/api/v1/health", healthHandler.Health)
+	r.GET("/api/v1/ping", healthHandler.Ping)
 
 	// API 路由组
 	api := r.Group("/api/v1")
 	{
-		// 公开路由
+		// 公开路由 - 认证
 		api.POST("/auth/register", authHandler.Register)
 		api.POST("/auth/login", authHandler.Login)
 		api.POST("/auth/refresh", authHandler.RefreshToken)
+
+		// 公开路由 - 视频
+		api.GET("/videos", videoHandler.ListVideos)
+		api.GET("/videos/:id", videoHandler.GetVideo)
 
 		// 需要认证的路由
 		authorized := api.Group("")
@@ -104,8 +106,6 @@ func main() {
 			authorized.GET("/user/videos", videoHandler.GetUserVideos)
 
 			// 视频相关
-			authorized.GET("/videos", videoHandler.ListVideos)
-			authorized.GET("/videos/:id", videoHandler.GetVideo)
 			authorized.POST("/videos/:id/favorite", videoHandler.FavoriteVideo)
 		}
 	}
@@ -134,7 +134,7 @@ func main() {
 
 	log.Info("Server started",
 		zap.String("port", cfg.App.Port),
-		zap.String("health", fmt.Sprintf("http://localhost:%s/health", cfg.App.Port)),
+		zap.String("health", fmt.Sprintf("http://localhost:%s/api/v1/health", cfg.App.Port)),
 	)
 
 	// 等待中断信号
@@ -160,6 +160,7 @@ func corsConfig(cfg *config.Config) cors.Config {
 	// 允许的来源
 	if len(cfg.Security.CORSOrigins) == 0 {
 		c.AllowOrigins = []string{
+			"https://901.555554.xyz",
 			"https://shipinku.pages.dev",
 			"https://*.pages.dev",
 			"http://localhost:3000",
