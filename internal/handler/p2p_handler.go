@@ -22,25 +22,46 @@ func NewP2PHandler(svc *service.P2PService) *P2PHandler {
 // POST /api/v1/p2p/register
 func (h *P2PHandler) RegisterPeer(c *gin.Context) {
 	var req struct {
-		PeerID        string `json:"peer_id" binding:"required"`
-		FingerprintID string `json:"fingerprint_id"`
-		IPAddress     string `json:"ip_address"`
-		Region        string `json:"region"`
-		VideoID       string `json:"video_id"`
-		BandwidthScore int   `json:"bandwidth_score"`
+		PeerID         string `json:"peer_id" binding:"required"`
+		FingerprintID  string `json:"fingerprint_id"`
+		IPAddress      string `json:"ip_address"`
+		Region         string `json:"region"`
+		VideoID        string `json:"video_id"`
+		BandwidthScore int    `json:"bandwidth_score"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "请求参数错误")
 		return
 	}
 
+	// 安全解析 UUID，避免 panic
+	var fingerprintID uuid.UUID
+	if req.FingerprintID != "" {
+		fid, err := uuid.Parse(req.FingerprintID)
+		if err != nil {
+			response.BadRequest(c, "无效的设备指纹 ID")
+			return
+		}
+		fingerprintID = fid
+	}
+
+	var videoID uuid.UUID
+	if req.VideoID != "" {
+		vid, err := uuid.Parse(req.VideoID)
+		if err != nil {
+			response.BadRequest(c, "无效的视频 ID")
+			return
+		}
+		videoID = vid
+	}
+
 	peer := &model.PeerRegistry{
 		PeerID:         req.PeerID,
-		FingerprintID: uuid.MustParse(req.FingerprintID),
+		FingerprintID:  fingerprintID,
 		IPAddress:      req.IPAddress,
 		Region:         req.Region,
 		IsActive:       true,
-		CurrentVideoID: uuid.MustParse(req.VideoID),
+		CurrentVideoID: videoID,
 		BandwidthScore: req.BandwidthScore,
 	}
 

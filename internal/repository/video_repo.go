@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"strings"
 	"videosgo/internal/model"
 
 	"gorm.io/gorm"
@@ -84,8 +85,11 @@ func (r *VideoRepository) Count() (int64, error) {
 // Search 搜索视频
 func (r *VideoRepository) Search(keyword string, offset, limit int) ([]model.Video, error) {
 	var videos []model.Video
-	err := r.db.Where("status = ? AND (title ILIKE ? OR clean_title ILIKE ?)",
-		"active", "%"+keyword+"%", "%"+keyword+"%").
+	// 转义 SQL LIKE 特殊字符，防止注入
+	escapedKeyword := strings.ReplaceAll(keyword, "%", "\\%")
+	escapedKeyword = strings.ReplaceAll(escapedKeyword, "_", "\\_")
+	err := r.db.Where("status = ? AND (title ILIKE ? ESCAPE '\\\\' OR clean_title ILIKE ? ESCAPE '\\\\')",
+		"active", "%"+escapedKeyword+"%", "%"+escapedKeyword+"%").
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&videos).Error

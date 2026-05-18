@@ -27,11 +27,19 @@ func (s *DanmakuService) CreateDanmaku(danmaku *model.Danmaku) error {
 	if danmaku.VideoID == uuid.Nil {
 		return fmt.Errorf("视频 ID 不能为空")
 	}
-	if danmaku.Time == "" || danmaku.Time == "0" {
+	// 验证弹幕时间
+	if danmaku.Time == "" {
+		return fmt.Errorf("弹幕时间不能为空")
+	}
+	timeVal, err := strconv.ParseFloat(danmaku.Time, 64)
+	if err != nil {
+		return fmt.Errorf("弹幕时间格式错误")
+	}
+	if timeVal < 0 {
 		return fmt.Errorf("弹幕时间不能为负数")
 	}
 	typeNum, _ := strconv.Atoi(danmaku.Type)
-		if typeNum < 1 || typeNum > 3 {
+	if typeNum < 1 || typeNum > 3 {
 		danmaku.Type = "1" // 默认右到左
 	}
 	if danmaku.Color == "" {

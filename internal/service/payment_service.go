@@ -1,8 +1,9 @@
 package service
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,10 +21,12 @@ func NewPaymentService(repo *repository.PaymentRepo) *PaymentService {
 	return &PaymentService{repo: repo}
 }
 
-// GenerateOrderNo 生成唯一订单号
+// GenerateOrderNo 生成唯一订单号（线程安全）
 func (s *PaymentService) GenerateOrderNo() string {
 	timestamp := time.Now().Format("20060102150405")
-	random := rand.Int63n(1000000)
+	// 使用 crypto/rand 保证并发安全
+	n, _ := rand.Int(rand.Reader, big.NewInt(1000000))
+	random := n.Int64()
 	return fmt.Sprintf("PAY%s%06d", timestamp, random)
 }
 
