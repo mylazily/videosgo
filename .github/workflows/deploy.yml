@@ -8,7 +8,7 @@ on:
     branches: [main, master]
 
 env:
-  GO_VERSION: '1.23'
+  GO_VERSION: '1.26'
   APP_NAME: videosgo
   DEPLOY_HOST: 141.148.0.209
   DEPLOY_USER: root
@@ -50,12 +50,15 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test -v ./...
+        run: go test -race -v ./...
 
       - name: Build binary
         run: |
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
-            -ldflags="-s -w -X main.Version=${{ steps.version.outputs.version }} -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -ldflags="-s -w \
+              -X main.Version=${{ steps.version.outputs.version }} \
+              -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+              -X main.GitCommit=${{ github.sha }}" \
             -o ${{ env.APP_NAME }} main.go
 
       - name: Upload artifact
@@ -112,35 +115,30 @@ jobs:
 
       - name: Deploy to server
         run: |
-          # 上传二进制文件
           scp -i ~/.ssh/deploy_key ${{ env.APP_NAME }} deploy-server:${{ env.DEPLOY_PATH }}/${{ env.APP_NAME }}.new
           
-          # 上传配置文件（如果存在）
           if [ -f .env.example ]; then
             scp -i ~/.ssh/deploy_key .env.example deploy-server:${{ env.DEPLOY_PATH }}/
           fi
           
-          # 执行部署脚本
           ssh -i ~/.ssh/deploy_key deploy-server << 'REMOTESCRIPT'
             set -e
             cd /opt/videosgo
             
-            # 备份当前版本
             if [ -f videosgo ]; then
               cp videosgo videosgo.backup.$(date +%Y%m%d_%H%M%S)
+              ls -t videosgo.backup.* 2>/dev/null | tail -n +6 | xargs -r rm -f
             fi
             
-            # 替换新版本
             mv videosgo.new videosgo
             chmod +x videosgo
             
-            # 检查服务文件是否存在，不存在则创建
             if [ ! -f /etc/systemd/system/videosgo.service ]; then
               cat > /etc/systemd/system/videosgo.service << 'SERVICEFILE'
 [Unit]
 Description=VideosGo API Server
-After=network.target postgresql.service redis.service
-Wants=postgresql.service redis.service
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
 
 [Service]
 Type=simple
@@ -153,6 +151,9 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=videosgo
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="GO_ENV=production"
+LimitNOFILE=65536
+LimitNPROC=4096
 
 [Install]
 WantedBy=multi-user.target
@@ -161,24 +162,30 @@ SERVICEFILE
               systemctl enable videosgo
             fi
             
-            # 重启服务
-            systemctl restart videosgo
+            if ! systemctl is-active --quiet postgresql@18-main; then
+              echo "PostgreSQL not running, starting..."
+              systemctl start postgresql@18-main || true
+            fi
             
-            # 等待服务启动
+            if ! systemctl is-active --quiet redis-server; then
+              echo "Redis not running, starting..."
+              systemctl start redis-server || true
+            fi
+            
+            systemctl restart videosgo
             sleep 3
             
-            # 健康检查
             for i in {1..10}; do
               if curl -sf http://localhost:8080/health > /dev/null; then
-                echo "✅ Service is healthy"
+                echo "Service is healthy"
+                echo "$(date): Deployed version $(/opt/videosgo/videosgo -version 2>/dev/null || echo 'unknown')" >> /opt/videosgo/deploy.log
                 exit 0
               fi
-              echo "Waiting for service to be healthy... ($i/10)"
+              echo "Waiting for service... ($i/10)"
               sleep 2
             done
             
-            echo "❌ Health check failed, rolling back..."
-            # 回滚逻辑
+            echo "Health check failed, rolling back..."
             systemctl stop videosgo
             latest_backup=$(ls -t videosgo.backup.* 2>/dev/null | head -1)
             if [ -n "$latest_backup" ]; then
@@ -193,7 +200,8 @@ SERVICEFILE
         run: |
           sleep 5
           curl -sf http://${{ env.DEPLOY_HOST }}:8080/health || exit 1
-          echo "✅ Deployment verified"
+          curl -sf http://${{ env.DEPLOY_HOST }}:8080/version || exit 1
+          echo "Deployment verified"
 
   lint:
     runs-on: ubuntu-latest
