@@ -161,9 +161,9 @@ func (h *P2PHandler) ExchangeICE(c *gin.Context) {
 }
 
 // GetVideoPeers 获取视频的在线节点
-// GET /api/v1/p2p/peers/:videoId
+// GET /api/v1/p2p/peers/:video_id
 func (h *P2PHandler) GetVideoPeers(c *gin.Context) {
-	videoID := c.Param("videoId")
+	videoID := c.Param("video_id")
 	if videoID == "" {
 		response.BadRequest(c, "缺少视频 ID")
 		return

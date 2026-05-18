@@ -105,9 +105,9 @@ func (h *DeviceHandler) UnlockVideo(c *gin.Context) {
 }
 
 // CheckVideoUnlocked 检查视频是否已解锁
-// GET /api/v1/device/check/:videoId?fingerprint_id=xxx
+// GET /api/v1/device/check/:video_id?fingerprint_id=xxx
 func (h *DeviceHandler) CheckVideoUnlocked(c *gin.Context) {
-	videoIDStr := c.Param("videoId")
+	videoIDStr := c.Param("video_id")
 	videoID, err := uuid.Parse(videoIDStr)
 	if err != nil {
 		response.BadRequest(c, "无效的视频 ID")

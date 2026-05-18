@@ -20,6 +20,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -78,10 +79,11 @@ func main() {
 	}()
 
 	// 初始化 Redis（可选）
-	var redisClient *database.RedisClient
+	var redisClient *redis.Client
 	redisClient, err = database.NewRedis(cfg.Redis)
 	if err != nil {
 		log.Warn("Failed to connect to Redis, running in degraded mode", zap.Error(err))
+		redisClient = nil
 	} else {
 		defer redisClient.Close()
 	}

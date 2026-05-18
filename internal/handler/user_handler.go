@@ -1,9 +1,8 @@
 package handler
 
 import (
-	"net/http"
-
 	"videosgo/internal/service"
+	"videosgo/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,46 +19,49 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 
 // GetProfile 获取用户资料
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	userID, _ := c.Get("user_id")
-	user, err := h.userService.GetProfile(userID.(string))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "用户未登录")
+		return
+	}
+	userID, ok := userIDVal.(string)
+	if !ok {
+		response.InternalError(c, "用户 ID 格式错误")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data":    user.ToResponse(),
-	})
+	user, err := h.userService.GetProfile(userID)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+
+	response.Success(c, user.ToResponse())
 }
 
 // UpdateProfile 更新用户资料
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "用户未登录")
+		return
+	}
+	userID, ok := userIDVal.(string)
+	if !ok {
+		response.InternalError(c, "用户 ID 格式错误")
+		return
+	}
 
 	var req service.UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": err.Error(),
-		})
+		response.BadRequest(c, err.Error())
 		return
 	}
 
-	if err := h.userService.UpdateProfile(userID.(string), &req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
+	if err := h.userService.UpdateProfile(userID, &req); err != nil {
+		response.InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "更新成功",
-	})
+	response.SuccessWithMessage(c, "更新成功", nil)
 }

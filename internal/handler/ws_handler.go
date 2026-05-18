@@ -57,9 +57,9 @@ func (h *WSHandler) HandleDanmaku(c *gin.Context) {
 }
 
 // GetOnlineCount 获取在线人数
-// GET /api/v1/ws/online/:videoId
+// GET /api/v1/ws/online/:video_id
 func (h *WSHandler) GetOnlineCount(c *gin.Context) {
-	videoID := c.Param("videoId")
+	videoID := c.Param("video_id")
 	count := h.svc.GetOnlineCount(videoID)
 	response.Success(c, gin.H{
 		"video_id": videoID,
