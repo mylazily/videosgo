@@ -262,10 +262,4 @@ func (c *MacCMSClient) FetchVideoDetail(ctx context.Context, apiURL, apiKey stri
 	return &result.List[0], nil
 }
 
-// min 返回较小值
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
+

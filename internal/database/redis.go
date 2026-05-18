@@ -9,6 +9,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// RDB 全局 Redis 客户端实例
+var RDB *redis.Client
+
 // NewRedis 创建 Redis 连接
 func NewRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
@@ -21,6 +24,9 @@ func NewRedis(cfg config.RedisConfig) (*redis.Client, error) {
 	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("failed to ping redis: %w", err)
 	}
+
+	// 赋值给全局变量
+	RDB = client
 
 	return client, nil
 }

@@ -1,60 +1,93 @@
 package repository
 
 import (
-	"database/sql"
 	"videosgo/internal/model"
+
+	"gorm.io/gorm"
 )
 
 // VideoRepository 视频仓库
 type VideoRepository struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 // NewVideoRepository 创建视频仓库
-func NewVideoRepository(db *sql.DB) *VideoRepository {
+func NewVideoRepository(db *gorm.DB) *VideoRepository {
 	return &VideoRepository{db: db}
 }
 
 // List 获取视频列表
 func (r *VideoRepository) List(offset, limit int) ([]model.Video, error) {
-	query := `
-		SELECT id, title, description, cover_url, video_url, source_id, category, status, created_at, updated_at
-		FROM videos WHERE status = 1 ORDER BY created_at DESC LIMIT $1 OFFSET $2
-	`
-	rows, err := r.db.Query(query, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
 	var videos []model.Video
-	for rows.Next() {
-		var v model.Video
-		err := rows.Scan(
-			&v.ID, &v.Title, &v.Description, &v.CoverURL, &v.VideoURL,
-			&v.SourceID, &v.Category, &v.Status, &v.CreatedAt, &v.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		videos = append(videos, v)
-	}
-	return videos, nil
+	err := r.db.Where("status = ?", "active").
+		Order("created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&videos).Error
+	return videos, err
 }
 
 // GetByID 根据 ID 获取视频
 func (r *VideoRepository) GetByID(id string) (*model.Video, error) {
-	query := `
-		SELECT id, title, description, cover_url, video_url, source_id, category, status, created_at, updated_at
-		FROM videos WHERE id = $1
-	`
-	video := &model.Video{}
-	err := r.db.QueryRow(query, id).Scan(
-		&video.ID, &video.Title, &video.Description, &video.CoverURL, &video.VideoURL,
-		&video.SourceID, &video.Category, &video.Status, &video.CreatedAt, &video.UpdatedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, nil
+	var video model.Video
+	err := r.db.Where("id = ?", id).First(&video).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, model.ErrNotFound
+		}
+		return nil, err
 	}
-	return video, err
+	return &video, nil
+}
+
+// GetRandom 获取随机视频列表
+func (r *VideoRepository) GetRandom(limit int) ([]model.Video, error) {
+	var videos []model.Video
+	err := r.db.Where("status = ?", "active").
+		Order("RANDOM()").
+		Limit(limit).
+		Find(&videos).Error
+	return videos, err
+}
+
+// GetHot 获取热门视频列表
+func (r *VideoRepository) GetHot(limit int) ([]model.Video, error) {
+	var videos []model.Video
+	err := r.db.Where("status = ?", "active").
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&videos).Error
+	return videos, err
+}
+
+// Create 创建视频
+func (r *VideoRepository) Create(video *model.Video) error {
+	return r.db.Create(video).Error
+}
+
+// Update 更新视频
+func (r *VideoRepository) Update(video *model.Video) error {
+	return r.db.Save(video).Error
+}
+
+// Delete 删除视频
+func (r *VideoRepository) Delete(id string) error {
+	return r.db.Where("id = ?", id).Delete(&model.Video{}).Error
+}
+
+// Count 统计视频数量
+func (r *VideoRepository) Count() (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Video{}).Where("status = ?", "active").Count(&count).Error
+	return count, err
+}
+
+// Search 搜索视频
+func (r *VideoRepository) Search(keyword string, offset, limit int) ([]model.Video, error) {
+	var videos []model.Video
+	err := r.db.Where("status = ? AND (title ILIKE ? OR clean_title ILIKE ?)",
+		"active", "%"+keyword+"%", "%"+keyword+"%").
+		Order("created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&videos).Error
+	return videos, err
 }

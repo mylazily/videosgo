@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -18,9 +19,10 @@ type Config struct {
 
 // AppConfig 应用配置
 type AppConfig struct {
-	Env    string `mapstructure:"env"`
-	Port   string `mapstructure:"port"`
-	Secret string `mapstructure:"secret"`
+	Env             string        `mapstructure:"env"`
+	Port            string        `mapstructure:"port"`
+	Secret          string        `mapstructure:"secret"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout"`
 }
 
 // DatabaseConfig 数据库配置
