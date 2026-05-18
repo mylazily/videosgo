@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"errors"
+	"net/http"
+
 	"videosgo/internal/service"
 	"videosgo/pkg/response"
 
@@ -27,7 +30,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	user, err := h.authService.Register(&req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		if errors.Is(err, service.ErrUserAlreadyExists) || errors.Is(err, service.ErrInvalidInput) {
+			response.BadRequest(c, err.Error())
+			return
+		}
+		response.InternalError(c, "注册失败，请稍后重试")
 		return
 	}
 
@@ -44,7 +51,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	tokens, user, err := h.authService.Login(&req)
 	if err != nil {
-		response.Unauthorized(c, err.Error())
+		if errors.Is(err, service.ErrInvalidCredentials) || errors.Is(err, service.ErrInvalidInput) {
+			response.Unauthorized(c, err.Error())
+			return
+		}
+		response.InternalError(c, "登录失败，请稍后重试")
 		return
 	}
 
@@ -59,6 +70,5 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // RefreshToken 刷新 Token
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
-	// TODO: 实现刷新逻辑
-	response.SuccessWithMessage(c, "刷新成功", nil)
+	response.Error(c, http.StatusNotImplemented, "刷新 Token 功能尚未实现")
 }

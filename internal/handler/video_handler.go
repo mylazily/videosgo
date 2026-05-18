@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strconv"
+
 	"videosgo/internal/service"
 	"videosgo/pkg/response"
 
@@ -19,7 +21,18 @@ func NewVideoHandler(videoService *service.VideoService) *VideoHandler {
 
 // ListVideos 获取视频列表
 func (h *VideoHandler) ListVideos(c *gin.Context) {
-	videos, err := h.videoService.ListVideos(0, 20)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+	videos, err := h.videoService.ListVideos(offset, pageSize)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return

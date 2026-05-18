@@ -19,6 +19,13 @@ type AuthService struct {
 	userRepo *repository.UserRepository
 }
 
+// 认证相关错误
+var (
+	ErrUserAlreadyExists = errors.New("email already exists")
+	ErrInvalidCredentials = errors.New("用户名或密码错误")
+	ErrInvalidInput      = errors.New("请输入用户名或邮箱")
+)
+
 // NewAuthService 创建认证服务
 func NewAuthService(cfg *config.Config, userRepo *repository.UserRepository) *AuthService {
 	return &AuthService{
@@ -57,7 +64,7 @@ func (s *AuthService) Register(req *RegisterRequest) (*model.User, error) {
 		return nil, err
 	}
 	if existingUser != nil {
-		return nil, errors.New("email already exists")
+		return nil, ErrUserAlreadyExists
 	}
 
 	// 加密密码
@@ -95,19 +102,19 @@ func (s *AuthService) Login(req *LoginRequest) (*TokenResponse, *model.User, err
 	} else if req.Email != "" {
 		user, err = s.userRepo.GetByEmail(req.Email)
 	} else {
-		return nil, nil, errors.New("请输入用户名或邮箱")
+		return nil, nil, ErrInvalidInput
 	}
 
 	if err != nil {
-		return nil, nil, errors.New("用户名或密码错误")
+		return nil, nil, ErrInvalidCredentials
 	}
 	if user == nil {
-		return nil, nil, errors.New("用户名或密码错误")
+		return nil, nil, ErrInvalidCredentials
 	}
 
 	// 验证密码
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, nil, errors.New("用户名或密码错误")
+		return nil, nil, ErrInvalidCredentials
 	}
 
 	// 生成 Token

@@ -33,7 +33,7 @@ func (r *UserRepository) GetByEmail(email string) (*model.User, error) {
 	var user model.User
 	err := r.db.Where("email = ?", email).First(&user).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
 		return nil, err
@@ -46,7 +46,7 @@ func (r *UserRepository) GetByID(id string) (*model.User, error) {
 	var user model.User
 	err := r.db.Where("id = ?", id).First(&user).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
 		return nil, err
@@ -59,7 +59,7 @@ func (r *UserRepository) GetByUsername(username string) (*model.User, error) {
 	var user model.User
 	err := r.db.Where("username = ?", username).First(&user).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
 		return nil, err
@@ -90,7 +90,7 @@ func (r *UserRepository) GetByUUID(id uuid.UUID) (*model.User, error) {
 	var user model.User
 	err := r.db.Where("id = ?", id).First(&user).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
 		return nil, err

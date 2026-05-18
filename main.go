@@ -101,7 +101,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(authService)
 	userHandler := handler.NewUserHandler(userService)
 	videoHandler := handler.NewVideoHandler(videoService)
-	healthHandler := handler.NewHealthHandler(db, redisClient)
+	healthHandler := handler.NewHealthHandler(db, redisClient, Version)
 
 	// 创建路由
 	r := gin.New()

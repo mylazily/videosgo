@@ -1,8 +1,10 @@
 package middleware
 
 import (
-	"net/http"
+	"fmt"
 	"strings"
+
+	"videosgo/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -13,20 +15,14 @@ func Auth(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    401,
-				"message": "Authorization header required",
-			})
+			response.Unauthorized(c, "Authorization header required")
 			c.Abort()
 			return
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    401,
-				"message": "Invalid authorization format",
-			})
+			response.Unauthorized(c, "Invalid authorization format")
 			c.Abort()
 			return
 		}
@@ -40,17 +36,33 @@ func Auth(secret string) gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"code":    401,
-				"message": "Invalid or expired token",
-			})
+			response.Unauthorized(c, "Invalid or expired token")
 			c.Abort()
 			return
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			c.Set("user_id", claims["user_id"])
-			c.Set("email", claims["email"])
+			// 类型安全的 user_id 提取
+			var userID string
+			switch v := claims["user_id"].(type) {
+			case string:
+				userID = v
+			case float64:
+				// JWT 数字类型可能是 float64
+				userID = fmt.Sprintf("%.0f", v)
+			default:
+				if v != nil {
+					userID = fmt.Sprintf("%v", v)
+				}
+			}
+			c.Set("user_id", userID)
+
+			// 类型安全的 email 提取
+			var email string
+			if v, ok := claims["email"].(string); ok {
+				email = v
+			}
+			c.Set("email", email)
 		}
 
 		c.Next()

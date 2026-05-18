@@ -2,25 +2,27 @@ package handler
 
 import (
 	"context"
-	"database/sql"
 
 	"videosgo/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
 // HealthHandler 健康检查处理器
 type HealthHandler struct {
-	db    *sql.DB
-	redis *redis.Client
+	db      *gorm.DB
+	redis   *redis.Client
+	version string
 }
 
 // NewHealthHandler 创建健康检查处理器
-func NewHealthHandler(db *sql.DB, redis *redis.Client) *HealthHandler {
+func NewHealthHandler(db *gorm.DB, redis *redis.Client, version string) *HealthHandler {
 	return &HealthHandler{
-		db:    db,
-		redis: redis,
+		db:      db,
+		redis:   redis,
+		version: version,
 	}
 }
 
@@ -36,7 +38,7 @@ func (h *HealthHandler) Health(c *gin.Context) {
 
 	// 检查数据库
 	if h.db != nil {
-		if err := h.db.Ping(); err != nil {
+		if err := h.db.Raw("SELECT 1").Error; err != nil {
 			status = "degraded"
 			checks["database"] = "error"
 		} else {
@@ -57,7 +59,7 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	response.Success(c, gin.H{
 		"status":  status,
 		"service": "videosgo",
-		"version": "1.0.0",
+		"version": h.version,
 		"checks":  checks,
 	})
 }

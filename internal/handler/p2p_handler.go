@@ -36,11 +36,11 @@ func (h *P2PHandler) RegisterPeer(c *gin.Context) {
 
 	peer := &model.PeerRegistry{
 		PeerID:         req.PeerID,
-		FingerprintID: uuid.MustParse(req.FingerprintID),
+		FingerprintID:  parseUUID(req.FingerprintID),
 		IPAddress:      req.IPAddress,
 		Region:         req.Region,
 		IsActive:       true,
-		CurrentVideoID: uuid.MustParse(req.VideoID),
+		CurrentVideoID: parseUUID(req.VideoID),
 		BandwidthScore: req.BandwidthScore,
 	}
 
@@ -176,4 +176,16 @@ func (h *P2PHandler) GetVideoPeers(c *gin.Context) {
 	}
 
 	response.Success(c, peers)
+}
+
+// parseUUID 安全解析 UUID，空字符串时返回 uuid.Nil
+func parseUUID(s string) uuid.UUID {
+	if s == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }
